@@ -26,6 +26,7 @@
           <div>
             <button id="add-doc-btn" disabled>+ Novo documento</button>
             <button id="import-json-btn" disabled>Importar JSON</button>
+            <button id="indexes-btn" disabled>Índices</button>
           </div>
         </div>
         <div id="query-panel" hidden>
@@ -82,6 +83,26 @@
         </div>
       </div>
     </main>
+  </div>
+  <div id="indexes-modal" class="modal-overlay" hidden>
+    <div class="modal">
+      <div class="modal-header">
+        <span class="modal-title">Índices</span>
+        <button id="indexes-close-btn" class="modal-close-btn">×</button>
+      </div>
+      <div class="modal-body">
+        <label class="modal-label">Índices existentes</label>
+        <div id="indexes-list"></div>
+        <label class="modal-label">Novo índice composto</label>
+        <div id="indexes-fields"></div>
+        <button id="indexes-add-field-btn" type="button" class="add-field-btn">+ Adicionar campo</button>
+        <div id="indexes-error" class="modal-error" hidden></div>
+      </div>
+      <div class="modal-actions">
+        <button id="indexes-cancel-btn" class="modal-btn-secondary">Fechar</button>
+        <button id="indexes-confirm-btn" class="modal-btn-primary">Criar índice</button>
+      </div>
+    </div>
   </div>
   <div id="connection-modal" class="modal-overlay" hidden>
     <div class="modal">

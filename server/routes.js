@@ -2,6 +2,7 @@ const express = require('express');
 const store = require('./connectionsStore');
 const { getClient, resetClient } = require('./firestoreClient');
 const svc = require('./firestoreService');
+const admin = require('./firestoreAdmin');
 
 const router = express.Router();
 
@@ -11,6 +12,9 @@ function handleError(err, res) {
   }
   if (/Conexão não encontrada/.test(err.message)) {
     return res.status(404).json({ error: err.message });
+  }
+  if (/emulador não suporta|precisa de|É necessário/.test(err.message)) {
+    return res.status(400).json({ error: err.message });
   }
   res.status(500).json({ error: err.message });
 }
@@ -93,6 +97,38 @@ data.get('/collections', async (req, res) => {
 data.get('/collections/*', async (req, res) => {
   try {
     res.json({ collections: await svc.listCollections(req.db, req.params[0]) });
+  } catch (err) {
+    handleError(err, res);
+  }
+});
+
+function collectionIdFromPath(fullPath) {
+  return fullPath.split('/').filter(Boolean).pop();
+}
+
+data.get('/indexes/*', async (req, res) => {
+  try {
+    const indexes = await admin.listIndexes(req.params.connId, collectionIdFromPath(req.params[0]));
+    res.json({ indexes });
+  } catch (err) {
+    handleError(err, res);
+  }
+});
+
+data.post('/indexes/*', async (req, res) => {
+  try {
+    await admin.createIndex(req.params.connId, collectionIdFromPath(req.params[0]), req.body.fields);
+    res.status(201).json({ ok: true });
+  } catch (err) {
+    handleError(err, res);
+  }
+});
+
+data.delete('/indexes/*', async (req, res) => {
+  try {
+    if (!req.query.id) return res.status(400).json({ error: 'Missing id' });
+    await admin.deleteIndex(req.params.connId, collectionIdFromPath(req.params[0]), req.query.id);
+    res.json({ ok: true });
   } catch (err) {
     handleError(err, res);
   }

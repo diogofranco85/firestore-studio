@@ -378,6 +378,117 @@ async function submitImportJson() {
   }
 }
 
+let indexesConnId = null;
+let indexesPath = null;
+
+function addIndexFieldRow() {
+  const row = document.createElement('div');
+  row.className = 'index-field-row';
+  row.innerHTML = `
+    <input type="text" class="index-field-path" placeholder="campo (ex: status)" />
+    <select class="index-field-mode">
+      <option value="asc">Crescente</option>
+      <option value="desc">Decrescente</option>
+      <option value="array">Array contém</option>
+    </select>
+    <button type="button" class="remove-field-btn">×</button>
+  `;
+  row.querySelector('.remove-field-btn').addEventListener('click', () => row.remove());
+  document.getElementById('indexes-fields').appendChild(row);
+}
+
+function openIndexesModal(connId, path) {
+  indexesConnId = connId;
+  indexesPath = path;
+  document.getElementById('indexes-error').hidden = true;
+  document.getElementById('indexes-fields').innerHTML = '';
+  addIndexFieldRow();
+  addIndexFieldRow();
+  document.getElementById('indexes-modal').hidden = false;
+  loadIndexesList();
+}
+
+function closeIndexesModal() {
+  document.getElementById('indexes-modal').hidden = true;
+}
+
+async function loadIndexesList() {
+  const listEl = document.getElementById('indexes-list');
+  const errEl = document.getElementById('indexes-error');
+  errEl.hidden = true;
+  listEl.textContent = 'Carregando...';
+  try {
+    const { indexes } = await api.get(`/api/connections/${indexesConnId}/indexes/${encodeURIComponentPath(indexesPath)}`);
+    listEl.innerHTML = '';
+    if (indexes.length === 0) {
+      listEl.textContent = 'Nenhum índice composto criado ainda.';
+      return;
+    }
+    indexes.forEach((idx) => {
+      const row = document.createElement('div');
+      row.className = 'index-row';
+      const summary = document.createElement('span');
+      summary.className = 'index-fields-summary';
+      summary.textContent = idx.fields
+        .map((f) => `${f.fieldPath} ${f.arrayConfig ? '(array)' : f.order === 'DESCENDING' ? '↓' : '↑'}`)
+        .join(', ');
+      const stateSpan = document.createElement('span');
+      stateSpan.className = 'index-state';
+      stateSpan.textContent = idx.state || '';
+      const delBtn = document.createElement('button');
+      delBtn.type = 'button';
+      delBtn.className = 'remove-field-btn';
+      delBtn.textContent = '×';
+      delBtn.title = 'Excluir índice';
+      delBtn.addEventListener('click', async () => {
+        if (!confirm('Excluir este índice?')) return;
+        try {
+          await api.send('DELETE', `/api/connections/${indexesConnId}/indexes/${encodeURIComponentPath(indexesPath)}?id=${encodeURIComponent(idx.id)}`);
+          loadIndexesList();
+        } catch (err) {
+          showBanner(`Erro ao excluir índice: ${err.message}`);
+        }
+      });
+      row.appendChild(summary);
+      row.appendChild(stateSpan);
+      row.appendChild(delBtn);
+      listEl.appendChild(row);
+    });
+  } catch (err) {
+    listEl.textContent = '';
+    errEl.textContent = err.message;
+    errEl.hidden = false;
+  }
+}
+
+async function submitCreateIndex() {
+  const errEl = document.getElementById('indexes-error');
+  errEl.hidden = true;
+  const fields = [...document.querySelectorAll('#indexes-fields .index-field-row')]
+    .map((row) => {
+      const fieldPath = row.querySelector('.index-field-path').value.trim();
+      if (!fieldPath) return null;
+      const mode = row.querySelector('.index-field-mode').value;
+      return { fieldPath, ...(mode === 'array' ? { arrayConfig: 'CONTAINS' } : { order: mode === 'desc' ? 'DESCENDING' : 'ASCENDING' }) };
+    })
+    .filter(Boolean);
+  if (fields.length === 0) {
+    errEl.textContent = 'Informe ao menos um campo.';
+    errEl.hidden = false;
+    return;
+  }
+  try {
+    await api.send('POST', `/api/connections/${indexesConnId}/indexes/${encodeURIComponentPath(indexesPath)}`, { fields });
+    document.getElementById('indexes-fields').innerHTML = '';
+    addIndexFieldRow();
+    addIndexFieldRow();
+    loadIndexesList();
+  } catch (err) {
+    errEl.textContent = err.message;
+    errEl.hidden = false;
+  }
+}
+
 let editingConnectionId = null;
 
 function updateConnectionModalFields() {
@@ -514,6 +625,7 @@ function renderActiveTab() {
   document.getElementById('table-panel').hidden = !tab;
   document.getElementById('add-doc-btn').disabled = !tab;
   document.getElementById('import-json-btn').disabled = !tab;
+  document.getElementById('indexes-btn').disabled = !tab;
   if (!tab) return;
 
   renderQueryPanel(tab);
@@ -829,6 +941,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     if (event.key === 'Escape' && !document.getElementById('import-json-modal').hidden) {
       closeImportJsonModal();
+    }
+    if (event.key === 'Escape' && !document.getElementById('indexes-modal').hidden) {
+      closeIndexesModal();
     }
   });
 });
@@ -1232,4 +1347,17 @@ document.getElementById('add-doc-btn').addEventListener('click', () => {
 document.getElementById('import-json-btn').addEventListener('click', () => {
   const tab = getActiveTab();
   if (tab) openImportJsonModal(tab.connId, tab.path);
+});
+
+document.getElementById('indexes-btn').addEventListener('click', () => {
+  const tab = getActiveTab();
+  if (tab) openIndexesModal(tab.connId, tab.path);
+});
+
+document.getElementById('indexes-close-btn').addEventListener('click', closeIndexesModal);
+document.getElementById('indexes-cancel-btn').addEventListener('click', closeIndexesModal);
+document.getElementById('indexes-confirm-btn').addEventListener('click', submitCreateIndex);
+document.getElementById('indexes-add-field-btn').addEventListener('click', addIndexFieldRow);
+document.getElementById('indexes-modal').addEventListener('click', (event) => {
+  if (event.target.id === 'indexes-modal') closeIndexesModal();
 });
