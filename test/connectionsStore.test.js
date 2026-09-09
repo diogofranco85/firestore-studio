@@ -38,8 +38,16 @@ test('updateConnection changes fields, deleteConnection removes it', () => {
 });
 
 test('seedDefaultIfEmpty only seeds when the table is empty', () => {
-  const before = store.listConnections().length;
+  // Limpar todas as conexões existentes para testar o ramo de seed
+  store.listConnections().forEach(c => store.deleteConnection(c.id));
+  assert.strictEqual(store.listConnections().length, 0);
+
+  // Seed deve criar uma conexão quando tabela está vazia
   store.seedDefaultIfEmpty({ projectId: 'seed-proj', emulatorHost: 'localhost:9999' });
-  const after = store.listConnections().length;
-  assert.strictEqual(after, before > 0 ? before : 1);
+  assert.strictEqual(store.listConnections().length, 1);
+
+  // Chamar novamente com tabela não-vazia não deve criar outra
+  const before = store.listConnections().length;
+  store.seedDefaultIfEmpty({ projectId: 'another-proj', emulatorHost: 'localhost:8888' });
+  assert.strictEqual(store.listConnections().length, before);
 });
