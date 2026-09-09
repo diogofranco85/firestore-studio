@@ -118,6 +118,28 @@ test('POST de documento sem data retorna 400', async () => {
   }
 });
 
+test('importação em lote cria documentos com id explícito e auto-gerado', async () => {
+  const conn = await createTestConnection();
+  const collection = 'route-test-import';
+  try {
+    const res = await fetch(`${base}/api/connections/${conn.id}/import/${collection}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ documents: [{ id: 'fixo', data: { foo: 'bar' } }, { data: { foo: 'baz' } }] }),
+    });
+    assert.strictEqual(res.status, 201);
+    const { imported, errors } = await res.json();
+    assert.strictEqual(imported, 2);
+    assert.deepStrictEqual(errors, []);
+
+    const getRes = await fetch(`${base}/api/connections/${conn.id}/document/${collection}/fixo`);
+    assert.strictEqual(getRes.status, 200);
+    assert.deepStrictEqual((await getRes.json()).data, { foo: 'bar' });
+  } finally {
+    await fetch(`${base}/api/connections/${conn.id}`, { method: 'DELETE' });
+  }
+});
+
 test('corpo JSON malformado retorna erro em JSON, não HTML', async () => {
   const conn = await createTestConnection();
   try {
