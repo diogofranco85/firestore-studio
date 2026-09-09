@@ -144,17 +144,40 @@ function buildDocumentNode(docPath, label) {
   return li;
 }
 
-async function createCollection() {
-  const name = window.prompt('Nome da nova coleção:');
-  if (!name) return;
-  if (name.includes('/')) {
-    showBanner('Nome de coleção não pode conter "/".');
+function showModalError(message) {
+  const el = document.getElementById('create-collection-error');
+  el.textContent = message;
+  el.hidden = false;
+}
+
+function hideModalError() {
+  document.getElementById('create-collection-error').hidden = true;
+}
+
+function openCreateCollectionModal() {
+  document.getElementById('new-collection-name').value = '';
+  document.getElementById('new-collection-doc-id').value = '';
+  hideModalError();
+  document.getElementById('create-collection-modal').hidden = false;
+  document.getElementById('new-collection-name').focus();
+}
+
+function closeCreateCollectionModal() {
+  document.getElementById('create-collection-modal').hidden = true;
+}
+
+async function submitCreateCollection() {
+  const name = document.getElementById('new-collection-name').value.trim();
+  const docId = document.getElementById('new-collection-doc-id').value.trim();
+
+  if (!name) {
+    showModalError('Informe o nome da coleção.');
     return;
   }
-
-  const docId = window.prompt(
-    'ID do primeiro documento (deixe em branco para gerar automaticamente):'
-  );
+  if (name.includes('/')) {
+    showModalError('Nome de coleção não pode conter "/".');
+    return;
+  }
 
   try {
     await api.send('POST', `/api/document/${encodeURIComponentPath(name)}`, {
@@ -163,12 +186,33 @@ async function createCollection() {
     });
     document.getElementById('collection-tree').appendChild(buildCollectionNode(name, name));
     hideBanner();
+    closeCreateCollectionModal();
   } catch (err) {
-    showBanner(`Erro ao criar coleção: ${err.message}`);
+    showModalError(`Erro ao criar coleção: ${err.message}`);
   }
 }
 
 document.addEventListener('DOMContentLoaded', () => {
   loadRootCollections();
-  document.getElementById('add-collection-btn').addEventListener('click', createCollection);
+
+  document.getElementById('add-collection-btn').addEventListener('click', openCreateCollectionModal);
+  document.getElementById('create-collection-close-btn').addEventListener('click', closeCreateCollectionModal);
+  document.getElementById('create-collection-cancel-btn').addEventListener('click', closeCreateCollectionModal);
+  document.getElementById('create-collection-confirm-btn').addEventListener('click', submitCreateCollection);
+
+  document.getElementById('create-collection-modal').addEventListener('click', (event) => {
+    if (event.target.id === 'create-collection-modal') closeCreateCollectionModal();
+  });
+
+  ['new-collection-name', 'new-collection-doc-id'].forEach((id) => {
+    document.getElementById(id).addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') submitCreateCollection();
+    });
+  });
+
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && !document.getElementById('create-collection-modal').hidden) {
+      closeCreateCollectionModal();
+    }
+  });
 });
