@@ -42,7 +42,8 @@ router.put('/connections/:id', async (req, res) => {
     const updated = store.updateConnection(req.params.id, req.body);
     if (!updated) return res.status(404).json({ error: 'Conexão não encontrada' });
     await resetClient(req.params.id);
-    res.json(updated);
+    const { credentialJson: _omit, ...safe } = updated;
+    res.json(safe);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
