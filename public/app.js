@@ -219,7 +219,7 @@ async function selectCollection(path, cursorDocId) {
     const previouslySelected = document.querySelector('#collection-tree .tree-row.selected');
     if (previouslySelected) previouslySelected.classList.remove('selected');
     const selectedRow = document.querySelector(
-      `#collection-tree > li[data-path="${CSS.escape(path)}"] > .tree-row`
+      `#collection-tree li[data-path="${CSS.escape(path)}"] > .tree-row`
     );
     if (selectedRow) selectedRow.classList.add('selected');
   } catch (err) {
