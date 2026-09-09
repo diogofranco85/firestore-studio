@@ -1,5 +1,6 @@
 const { Timestamp, GeoPoint, DocumentReference } = require('firebase-admin/firestore');
-const { db } = require('./firestoreClient');
+
+let db = null;
 
 function toWire(value) {
   if (value === null || value === undefined) return null;
@@ -41,4 +42,8 @@ function fromWire(value) {
   return value;
 }
 
-module.exports = { toWire, fromWire };
+function setDb(dbInstance) {
+  db = dbInstance;
+}
+
+module.exports = { toWire, fromWire, setDb };

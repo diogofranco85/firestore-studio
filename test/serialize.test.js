@@ -1,8 +1,30 @@
 const test = require('node:test');
 const assert = require('node:assert');
+const path = require('node:path');
+const fs = require('node:fs');
 const { Timestamp, GeoPoint } = require('firebase-admin/firestore');
-const { db } = require('../server/firestoreClient');
-const { toWire, fromWire } = require('../server/serialize');
+
+const dbPath = path.join(__dirname, '.tmp-serialize.db');
+process.env.CONNECTIONS_DB_PATH = dbPath;
+test.after(() => fs.rmSync(dbPath, { force: true }));
+
+const store = require('../server/connectionsStore');
+const { getClient } = require('../server/firestoreClient');
+const config = require('../server/config');
+const { toWire, fromWire, setDb } = require('../server/serialize');
+
+let db;
+
+test.before(async () => {
+  const conn = store.createConnection({
+    name: 'Serialize Test',
+    type: 'emulator',
+    projectId: config.projectId,
+    emulatorHost: config.emulatorHost,
+  });
+  db = await getClient(conn.id);
+  setDb(db);
+});
 
 test('toWire converts primitives unchanged', () => {
   assert.strictEqual(toWire('hello'), 'hello');
