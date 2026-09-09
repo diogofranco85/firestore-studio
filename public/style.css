@@ -37,9 +37,24 @@ body {
   color: var(--text);
   background: var(--bg);
   font-size: 13px;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
 }
 
-#app { display: flex; height: 100vh; }
+#top-bar {
+  flex-shrink: 0;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  background: #5f6368;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+#app { display: flex; flex: 1; min-height: 0; }
 
 #sidebar {
   width: 260px;
