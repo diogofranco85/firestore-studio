@@ -64,8 +64,7 @@ body {
 }
 #add-collection-btn:hover { background: var(--accent-hover); }
 
-#collection-tree, .tree-children { list-style: none; margin: 0; padding-left: 16px; }
-#collection-tree { padding-left: 0; }
+#collection-tree { list-style: none; margin: 0; padding-left: 0; }
 
 .tree-row {
   display: flex;
@@ -89,8 +88,9 @@ body {
   padding: 0;
 }
 
+.tree-children { list-style: none; margin: 0; padding-left: 16px; }
+
 .tree-label { cursor: pointer; color: var(--text); }
-.doc-label { color: var(--text-muted); font-size: 12px; }
 
 #content {
   flex: 1;
