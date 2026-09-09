@@ -36,8 +36,8 @@ async function resetClient(connectionId) {
   clients.delete(connectionId);
   try {
     await admin.app(connectionId).delete();
-  } catch {
-    // app não existia — nada a derrubar
+  } catch(error) {
+    console.warn("reset client", error)
   }
 }
 
