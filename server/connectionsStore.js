@@ -15,9 +15,11 @@ db.exec(`
     project_id TEXT NOT NULL,
     emulator_host TEXT,
     credential_json TEXT,
+    database_id TEXT,
     created_at TEXT NOT NULL
   )
 `);
+try { db.exec('ALTER TABLE connections ADD COLUMN database_id TEXT'); } catch { /* já existe */ }
 
 function toRow(r, includeCredential) {
   if (!r) return null;
@@ -27,6 +29,7 @@ function toRow(r, includeCredential) {
     type: r.type,
     projectId: r.project_id,
     emulatorHost: r.emulator_host,
+    databaseId: r.database_id,
     createdAt: r.created_at,
   };
   if (includeCredential) row.credentialJson = r.credential_json;
@@ -41,12 +44,12 @@ function getConnection(id) {
   return toRow(db.prepare('SELECT * FROM connections WHERE id = ?').get(id), true);
 }
 
-function createConnection({ name, type, projectId, emulatorHost, credentialJson }) {
+function createConnection({ name, type, projectId, emulatorHost, credentialJson, databaseId }) {
   const id = randomUUID();
   const createdAt = new Date().toISOString();
   db.prepare(
-    'INSERT INTO connections (id, name, type, project_id, emulator_host, credential_json, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)'
-  ).run(id, name, type, projectId, emulatorHost || null, credentialJson || null, createdAt);
+    'INSERT INTO connections (id, name, type, project_id, emulator_host, credential_json, database_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+  ).run(id, name, type, projectId, emulatorHost || null, credentialJson || null, databaseId || null, createdAt);
   return getConnection(id);
 }
 
@@ -58,8 +61,8 @@ function updateConnection(id, fields) {
   // antiga em repouso no banco.
   const credentialJson = merged.type === 'emulator' ? null : merged.credentialJson || null;
   db.prepare(
-    'UPDATE connections SET name = ?, type = ?, project_id = ?, emulator_host = ?, credential_json = ? WHERE id = ?'
-  ).run(merged.name, merged.type, merged.projectId, merged.emulatorHost || null, credentialJson, id);
+    'UPDATE connections SET name = ?, type = ?, project_id = ?, emulator_host = ?, credential_json = ?, database_id = ? WHERE id = ?'
+  ).run(merged.name, merged.type, merged.projectId, merged.emulatorHost || null, credentialJson, merged.databaseId || null, id);
   return getConnection(id);
 }
 

@@ -150,6 +150,7 @@ function openConnectionModal(conn) {
   document.getElementById('conn-name').value = conn ? conn.name : '';
   document.getElementById('conn-type').value = conn ? conn.type : 'emulator';
   document.getElementById('conn-project-id').value = conn ? conn.projectId : '';
+  document.getElementById('conn-database-id').value = conn ? conn.databaseId || '' : '';
   document.getElementById('conn-emulator-host').value = conn ? conn.emulatorHost || '' : '';
   document.getElementById('conn-credential').value = '';
   updateConnectionModalFields();
@@ -165,6 +166,7 @@ async function submitConnection() {
   const name = document.getElementById('conn-name').value.trim();
   const type = document.getElementById('conn-type').value;
   const projectId = document.getElementById('conn-project-id').value.trim();
+  const databaseId = document.getElementById('conn-database-id').value.trim();
   const emulatorHost = document.getElementById('conn-emulator-host').value.trim();
   const credentialJson = document.getElementById('conn-credential').value.trim();
 
@@ -175,7 +177,7 @@ async function submitConnection() {
     return;
   }
 
-  const payload = { name, type, projectId, emulatorHost: emulatorHost || undefined, credentialJson: credentialJson || undefined };
+  const payload = { name, type, projectId, emulatorHost: emulatorHost || undefined, credentialJson: credentialJson || undefined, databaseId: databaseId || undefined };
   try {
     if (editingConnectionId) {
       await api.send('PUT', `/api/connections/${editingConnectionId}`, payload);
