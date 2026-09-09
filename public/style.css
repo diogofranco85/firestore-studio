@@ -586,6 +586,30 @@ body {
   color: var(--text);
   white-space: nowrap;
 }
+#indexes-list { margin-bottom: 4px; }
+.index-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+}
+.index-row:last-child { border-bottom: none; }
+.index-fields-summary { flex: 1; font-family: ui-monospace, "SFMono-Regular", Consolas, monospace; }
+.index-state {
+  font-size: 11px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.index-field-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+.index-field-row input[type="text"] { flex: 1; }
 .modal-error {
   color: var(--danger);
   font-size: 12px;
