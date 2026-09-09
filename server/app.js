@@ -7,4 +7,9 @@ app.use(express.json());
 app.use('/api', routes);
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
+app.use((err, req, res, next) => {
+  const status = err.status || err.statusCode || 500;
+  res.status(status).json({ error: err.message || 'Internal error' });
+});
+
 module.exports = app;

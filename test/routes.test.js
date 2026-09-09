@@ -72,3 +72,14 @@ test('POST without a data object returns 400', withServer(async (base) => {
   });
   assert.strictEqual(res.status, 400);
 }));
+
+test('malformed JSON body returns a JSON error, not HTML', withServer(async (base) => {
+  const res = await fetch(`${base}/api/document/${testCollection}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: '{not valid json',
+  });
+  assert.strictEqual(res.status, 400);
+  const body = await res.json();
+  assert.ok(typeof body.error === 'string' && body.error.length > 0);
+}));
