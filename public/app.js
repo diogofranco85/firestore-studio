@@ -222,13 +222,39 @@ async function submitCreateCollection() {
   }
 }
 
-function parseImportJson(text) {
+const MONGO_NUMBER_KEYS = ['$numberLong', '$numberInt', '$numberDouble', '$numberDecimal'];
+
+function convertMongoTypes(value) {
+  if (value === null || typeof value !== 'object') return value;
+  if (Array.isArray(value)) return value.map(convertMongoTypes);
+  const keys = Object.keys(value);
+  if (keys.length === 1) {
+    const [key] = keys;
+    if (key === '$oid') return value.$oid;
+    if (MONGO_NUMBER_KEYS.includes(key)) return Number(value[key]);
+    if (key === '$date') {
+      const raw = value.$date;
+      const millis = raw && typeof raw === 'object' ? Number(raw.$numberLong ?? raw.$numberInt) : raw;
+      return { __type: 'timestamp', value: new Date(millis).toISOString() };
+    }
+  }
+  const out = {};
+  for (const [k, v] of Object.entries(value)) out[k] = convertMongoTypes(v);
+  return out;
+}
+
+function isMongoImportMode() {
+  return document.getElementById('import-json-mongo').checked;
+}
+
+function parseImportJson(text, mongoMode) {
   let parsed;
   try {
     parsed = JSON.parse(text);
   } catch {
     throw new Error('JSON inválido.');
   }
+  if (mongoMode) parsed = convertMongoTypes(parsed);
   const docs = [];
   if (Array.isArray(parsed)) {
     parsed.forEach((item) => {
@@ -257,6 +283,7 @@ function openImportJsonModal(connId, path) {
   importJsonPath = path;
   document.getElementById('import-json-text').value = '';
   document.getElementById('import-json-file').value = '';
+  document.getElementById('import-json-mongo').checked = false;
   document.getElementById('import-json-error').hidden = true;
   document.getElementById('import-json-columns').hidden = true;
   document.getElementById('import-json-columns-list').innerHTML = '';
@@ -274,7 +301,7 @@ function previewImportColumns(text) {
   listEl.innerHTML = '';
   let documents;
   try {
-    documents = parseImportJson(text);
+    documents = parseImportJson(text, isMongoImportMode());
   } catch {
     columnsWrap.hidden = true;
     return;
@@ -319,7 +346,7 @@ async function submitImportJson() {
   }
   let documents;
   try {
-    documents = parseImportJson(text);
+    documents = parseImportJson(text, isMongoImportMode());
   } catch (err) {
     errEl.textContent = err.message;
     errEl.hidden = false;
@@ -788,6 +815,9 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('import-json-file').addEventListener('change', (event) => {
     const file = event.target.files[0];
     if (file) loadImportJsonFile(file);
+  });
+  document.getElementById('import-json-mongo').addEventListener('change', () => {
+    previewImportColumns(document.getElementById('import-json-text').value);
   });
 
   document.addEventListener('keydown', (event) => {
