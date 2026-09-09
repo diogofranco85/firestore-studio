@@ -37,7 +37,7 @@ async function getDocument(db, docPath) {
 }
 
 async function createDocument(db, collectionPath, { id, data }) {
-  const converted = fromWire(data);
+  const converted = fromWire(data, db);
   const colRef = db.collection(collectionPath);
   const docRef = id ? colRef.doc(id) : colRef.doc();
   await docRef.set(converted);
@@ -45,7 +45,7 @@ async function createDocument(db, collectionPath, { id, data }) {
 }
 
 async function updateDocument(db, docPath, data) {
-  const converted = fromWire(data);
+  const converted = fromWire(data, db);
   await db.doc(docPath).set(converted);
 }
 

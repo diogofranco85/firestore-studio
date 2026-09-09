@@ -11,7 +11,7 @@ test.after(() => fs.rmSync(dbPath, { force: true }));
 const store = require('../server/connectionsStore');
 const { getClient } = require('../server/firestoreClient');
 const config = require('../server/config');
-const { toWire, fromWire, setDb } = require('../server/serialize');
+const { toWire, fromWire } = require('../server/serialize');
 
 let db;
 
@@ -23,7 +23,6 @@ test.before(async () => {
     emulatorHost: config.emulatorHost,
   });
   db = await getClient(conn.id);
-  setDb(db);
 });
 
 test('toWire converts primitives unchanged', () => {
@@ -58,7 +57,7 @@ test('toWire/fromWire round-trip a DocumentReference', () => {
   const ref = db.doc('users/abc123');
   const wire = toWire(ref);
   assert.deepStrictEqual(wire, { __type: 'reference', path: 'users/abc123' });
-  const back = fromWire(wire);
+  const back = fromWire(wire, db);
   assert.strictEqual(back.path, 'users/abc123');
 });
 
