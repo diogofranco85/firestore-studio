@@ -32,8 +32,13 @@ async function getClient(connectionId) {
   return db;
 }
 
-function resetClient(connectionId) {
+async function resetClient(connectionId) {
   clients.delete(connectionId);
+  try {
+    await admin.app(connectionId).delete();
+  } catch {
+    // app não existia — nada a derrubar
+  }
 }
 
 module.exports = { getClient, resetClient };
