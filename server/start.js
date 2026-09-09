@@ -15,4 +15,10 @@ async function start() {
   });
 }
 
+process.on("SIGHUP", function () {
+  console.log("Hot Reload :: Graceful shutdown")
+  process.kill(process.pid, "SIGTERM");
+})
+
+
 start();
