@@ -59,9 +59,23 @@
           <span id="editor-title"></span>
           <button id="editor-close-btn">×</button>
         </div>
+        <p id="editor-help">Os documentos armazenam dados em pares de nome/valor denominados "campos". Os campos podem ser adicionados, editados ou excluídos agora ou depois que adicionar o documento.</p>
+        <div id="editor-parent-row">
+          <label class="editor-section-label">Caminho pai</label>
+          <div id="editor-parent-path"></div>
+        </div>
+        <div id="editor-doc-id-row">
+          <div id="editor-doc-id-inputs">
+            <input id="field-doc-id" type="text" placeholder="Código do documento" />
+            <button id="auto-id-btn" type="button">Código automático</button>
+          </div>
+          <div id="doc-id-hint" hidden>Atribuído automaticamente. Personalize, caso necessário.</div>
+        </div>
         <div id="editor-fields"></div>
         <div id="editor-actions">
           <button id="save-doc-btn">Salvar</button>
+          <button id="save-add-another-btn">Salvar e adicionar outro</button>
+          <button id="cancel-doc-btn" class="modal-btn-secondary">Cancelar</button>
           <button id="delete-doc-btn">Apagar</button>
         </div>
       </div>

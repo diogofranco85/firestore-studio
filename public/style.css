@@ -248,6 +248,19 @@ body {
 #add-doc-btn:hover:not(:disabled) { background: var(--accent-hover); }
 #add-doc-btn:disabled { background: var(--text-faint); cursor: not-allowed; }
 
+#import-json-btn {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  padding: 7px 14px;
+  border-radius: var(--radius);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+#import-json-btn:hover:not(:disabled) { background: var(--accent-hover); }
+#import-json-btn:disabled { background: var(--text-faint); cursor: not-allowed; }
+
 #doc-table {
   border-collapse: collapse;
   width: 100%;
@@ -296,7 +309,7 @@ body {
   right: 0;
   top: 0;
   bottom: 0;
-  width: 420px;
+  width: 560px;
   background: #fff;
   border-left: 1px solid var(--border);
   padding: 20px;
@@ -307,14 +320,13 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
   padding-bottom: 12px;
   border-bottom: 1px solid var(--border);
 }
 #editor-title {
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 600;
-  font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
 }
 #editor-close-btn {
   border: none;
@@ -324,8 +336,80 @@ body {
   color: var(--text-muted);
   line-height: 1;
 }
+#editor-help {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.5;
+  margin: 0 0 16px;
+}
+.editor-section-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+#editor-parent-row { margin-bottom: 16px; }
+#editor-parent-path {
+  font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+  font-size: 13px;
+}
+#editor-doc-id-row { margin-bottom: 20px; }
+#editor-doc-id-inputs { display: flex; align-items: center; gap: 12px; }
+#field-doc-id {
+  flex: 1;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 8px 10px;
+  font-size: 13px;
+  font-family: inherit;
+}
+#field-doc-id:disabled { background: var(--row-hover); color: var(--text-muted); }
+#auto-id-btn {
+  border: none;
+  background: transparent;
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+#auto-id-btn:hover { text-decoration: underline; }
+#doc-id-hint { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
 
-.field-row { display: flex; gap: 6px; align-items: center; margin-bottom: 8px; }
+#editor-fields { padding-left: 24px; }
+.field-children {
+  margin-left: 22px;
+  padding-left: 14px;
+  border-left: 1px solid var(--border);
+}
+.field-row { position: relative; margin-bottom: 10px; }
+.field-num {
+  position: absolute;
+  left: -22px;
+  top: 8px;
+  font-size: 11px;
+  color: var(--text-faint);
+  width: 18px;
+  text-align: right;
+}
+.field-row > .expand-toggle {
+  position: absolute;
+  left: -14px;
+  top: 6px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: 11px;
+  padding: 0;
+}
+.field-row > .expand-toggle[hidden] { display: none; }
+.field-main { display: flex; gap: 8px; align-items: flex-start; }
+.field-col { display: flex; flex-direction: column; gap: 3px; }
+.field-col label { font-size: 11px; color: var(--text-muted); }
+.field-col.field-value-col { flex: 1; }
+.field-col.field-value-col[hidden] { display: none; }
 .field-key, .field-type, .value-input {
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -333,24 +417,30 @@ body {
   font-size: 13px;
   font-family: inherit;
 }
-.field-key { width: 120px; }
+.field-key { width: 130px; }
 .field-type { width: 100px; }
-.field-value { flex: 1; display: flex; gap: 4px; }
-.value-input { flex: 1; }
+.field-value { display: flex; gap: 4px; }
+.value-input { flex: 1; width: 100%; }
 .json-input { width: 100%; min-height: 80px; font-family: ui-monospace, monospace; }
 
-#add-field-btn, .remove-field-btn {
-  border: 1px solid var(--border);
-  background: #fff;
-  border-radius: var(--radius);
+#add-field-btn, .add-field-btn, .remove-field-btn {
+  border: none;
+  background: transparent;
   cursor: pointer;
-  color: var(--text-muted);
-  padding: 5px 10px;
+  color: var(--accent);
   font-size: 13px;
+  font-weight: 600;
+  padding: 4px 0;
 }
-#add-field-btn:hover, .remove-field-btn:hover { background: var(--row-hover); }
+.remove-field-btn {
+  color: var(--text-muted);
+  font-weight: normal;
+  align-self: center;
+}
+#add-field-btn:hover, .add-field-btn:hover { text-decoration: underline; }
+.remove-field-btn:hover { color: var(--danger); }
 
-#editor-actions { display: flex; gap: 8px; margin-top: 16px; }
+#editor-actions { display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
 #save-doc-btn {
   background: var(--accent);
   color: #fff;
@@ -361,6 +451,25 @@ body {
   cursor: pointer;
 }
 #save-doc-btn:hover { background: var(--accent-hover); }
+#save-add-another-btn {
+  background: #fff;
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  padding: 8px 16px;
+  border-radius: var(--radius);
+  font-weight: 600;
+  cursor: pointer;
+}
+#save-add-another-btn:hover { background: var(--row-hover); }
+#cancel-doc-btn {
+  background: #fff;
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  padding: 8px 16px;
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+#cancel-doc-btn:hover { background: var(--row-hover); }
 #delete-doc-btn {
   background: #fff;
   color: var(--danger);

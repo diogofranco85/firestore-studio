@@ -720,101 +720,197 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 });
 
-const TYPE_OPTIONS = ['string', 'number', 'boolean', 'null', 'timestamp', 'geopoint', 'reference', 'bytes', 'map/array'];
+const TYPE_OPTIONS = ['string', 'number', 'boolean', 'null', 'timestamp', 'geopoint', 'reference', 'bytes', 'map', 'array'];
 
-function openEditor(title, docId, connId, collectionPath, data) {
+function updateDocIdHint() {
+  const isNew = state.editingDoc && state.editingDoc.isNew;
+  const input = document.getElementById('field-doc-id');
+  document.getElementById('doc-id-hint').hidden = !(isNew && !input.value.trim());
+}
+
+function openEditor(docId, connId, collectionPath, data) {
   state.editingDoc = { connId, collectionPath, id: docId, isNew: docId === null };
-  document.getElementById('editor-title').textContent = title;
+  const isNew = state.editingDoc.isNew;
+  document.getElementById('editor-title').textContent = isNew ? 'Adicionar um documento' : 'Editar documento';
+  document.getElementById('editor-parent-path').textContent = `/${collectionPath}`;
   document.getElementById('editor-panel').hidden = false;
+
+  const idInput = document.getElementById('field-doc-id');
+  idInput.value = isNew ? '' : docId;
+  idInput.disabled = !isNew;
+  document.getElementById('auto-id-btn').hidden = !isNew;
+  updateDocIdHint();
+
   renderEditorFields(data || {});
-  document.getElementById('delete-doc-btn').hidden = state.editingDoc.isNew;
+  document.getElementById('delete-doc-btn').hidden = isNew;
+  document.getElementById('save-add-another-btn').hidden = !isNew;
 }
 
 async function openEditorForExisting(connId, collectionPath, docId) {
   try {
     const doc = await api.get(`/api/connections/${connId}/document/${encodeURIComponentPath(`${collectionPath}/${docId}`)}`);
-    openEditor(`${collectionPath}/${docId}`, docId, connId, collectionPath, doc.data);
+    openEditor(docId, connId, collectionPath, doc.data);
   } catch (err) {
     showBanner(`Erro ao abrir documento: ${err.message}`);
   }
 }
 
 function openEditorForNew(connId, collectionPath) {
-  openEditor(`Novo documento em ${collectionPath}`, null, connId, collectionPath, {});
+  openEditor(null, connId, collectionPath, {});
 }
 
 function detectType(value) {
   if (value === null || value === undefined) return 'null';
   if (typeof value === 'object' && value.__type) return value.__type;
-  if (Array.isArray(value)) return 'map/array';
-  if (typeof value === 'object') return 'map/array';
+  if (Array.isArray(value)) return 'array';
+  if (typeof value === 'object') return 'map';
   return typeof value;
+}
+
+function renumberLevel(level, prefix) {
+  let i = 0;
+  Array.from(level.children).forEach((row) => {
+    if (!row.classList.contains('field-row')) return;
+    i += 1;
+    const num = prefix ? `${prefix}.${i}` : `${i}`;
+    row.querySelector(':scope > .field-num').textContent = num;
+    const children = row.querySelector(':scope > .field-children');
+    if (children) renumberLevel(children, num);
+  });
+}
+
+function renumberEditor() {
+  renumberLevel(document.getElementById('editor-fields'), '');
+}
+
+function buildFieldsLevel(dataObj) {
+  const level = document.createElement('div');
+  level.className = 'field-children';
+  Object.entries(dataObj).forEach(([k, v]) => level.appendChild(buildFieldRow(k, v)));
+  const addBtn = document.createElement('button');
+  addBtn.type = 'button';
+  addBtn.className = 'add-field-btn';
+  addBtn.textContent = '+ Adicionar campo';
+  addBtn.addEventListener('click', () => {
+    level.insertBefore(buildFieldRow('', ''), addBtn);
+    renumberEditor();
+  });
+  level.appendChild(addBtn);
+  return level;
 }
 
 function renderEditorFields(data) {
   const container = document.getElementById('editor-fields');
   container.innerHTML = '';
-
-  const idRow = document.createElement('div');
-  idRow.className = 'field-row';
-  const idLabel = document.createElement('label');
-  idLabel.textContent = 'ID do documento';
-  const idInput = document.createElement('input');
-  idInput.id = 'field-doc-id';
-  idInput.value = state.editingDoc.id || '';
-  idInput.disabled = !state.editingDoc.isNew;
-  idInput.placeholder = state.editingDoc.isNew ? '(auto-gerado se vazio)' : '';
-  idRow.appendChild(idLabel);
-  idRow.appendChild(idInput);
-  container.appendChild(idRow);
-
   Object.entries(data).forEach(([key, value]) => container.appendChild(buildFieldRow(key, value)));
 
   const addFieldBtn = document.createElement('button');
-  addFieldBtn.textContent = '+ Adicionar campo';
+  addFieldBtn.type = 'button';
   addFieldBtn.id = 'add-field-btn';
-  addFieldBtn.addEventListener('click', () => container.insertBefore(buildFieldRow('', ''), addFieldBtn));
+  addFieldBtn.className = 'add-field-btn';
+  addFieldBtn.textContent = '+ Adicionar campo';
+  addFieldBtn.addEventListener('click', () => {
+    container.insertBefore(buildFieldRow('', ''), addFieldBtn);
+    renumberEditor();
+  });
   container.appendChild(addFieldBtn);
+  renumberEditor();
 }
 
 function buildFieldRow(key, value) {
+  const type = detectType(value);
   const row = document.createElement('div');
   row.className = 'field-row';
-  row.dataset.type = detectType(value);
+  row.dataset.type = type;
 
+  const num = document.createElement('div');
+  num.className = 'field-num';
+
+  const expandBtn = document.createElement('button');
+  expandBtn.type = 'button';
+  expandBtn.className = 'expand-toggle';
+  expandBtn.textContent = '▾';
+
+  const main = document.createElement('div');
+  main.className = 'field-main';
+
+  const keyCol = document.createElement('div');
+  keyCol.className = 'field-col';
+  keyCol.innerHTML = '<label>Nome do campo *</label>';
   const keyInput = document.createElement('input');
   keyInput.className = 'field-key';
   keyInput.value = key;
   keyInput.placeholder = 'nome do campo';
+  keyCol.appendChild(keyInput);
 
+  const typeCol = document.createElement('div');
+  typeCol.className = 'field-col';
+  typeCol.innerHTML = '<label>Tipo de campo</label>';
   const typeSelect = document.createElement('select');
   typeSelect.className = 'field-type';
-  TYPE_OPTIONS.forEach((type) => {
+  TYPE_OPTIONS.forEach((t) => {
     const opt = document.createElement('option');
-    opt.value = type;
-    opt.textContent = type;
-    if (type === row.dataset.type) opt.selected = true;
+    opt.value = t;
+    opt.textContent = t;
+    if (t === type) opt.selected = true;
     typeSelect.appendChild(opt);
   });
+  typeCol.appendChild(typeSelect);
 
+  const valueCol = document.createElement('div');
+  valueCol.className = 'field-col field-value-col';
+  valueCol.innerHTML = '<label>Valor do campo</label>';
   const valueContainer = document.createElement('div');
   valueContainer.className = 'field-value';
-  renderValueInput(valueContainer, row.dataset.type, value);
-
-  typeSelect.addEventListener('change', () => {
-    row.dataset.type = typeSelect.value;
-    renderValueInput(valueContainer, typeSelect.value, defaultValueForType(typeSelect.value));
-  });
+  valueCol.appendChild(valueContainer);
 
   const removeBtn = document.createElement('button');
-  removeBtn.textContent = '×';
+  removeBtn.type = 'button';
   removeBtn.className = 'remove-field-btn';
-  removeBtn.addEventListener('click', () => row.remove());
+  removeBtn.textContent = '🗑';
+  removeBtn.title = 'Remover campo';
+  removeBtn.addEventListener('click', () => {
+    row.remove();
+    renumberEditor();
+  });
 
-  row.appendChild(keyInput);
-  row.appendChild(typeSelect);
-  row.appendChild(valueContainer);
-  row.appendChild(removeBtn);
+  main.appendChild(keyCol);
+  main.appendChild(typeCol);
+  main.appendChild(valueCol);
+  main.appendChild(removeBtn);
+
+  row.appendChild(num);
+  row.appendChild(expandBtn);
+  row.appendChild(main);
+
+  let childrenLevel = null;
+  function applyType(newType, newValue) {
+    row.dataset.type = newType;
+    expandBtn.hidden = newType !== 'map';
+    if (childrenLevel) {
+      childrenLevel.remove();
+      childrenLevel = null;
+    }
+    if (newType === 'map') {
+      valueCol.hidden = true;
+      childrenLevel = buildFieldsLevel(newValue && typeof newValue === 'object' && !Array.isArray(newValue) ? newValue : {});
+      row.appendChild(childrenLevel);
+    } else {
+      valueCol.hidden = false;
+      renderValueInput(valueContainer, newType, newValue);
+    }
+    renumberEditor();
+  }
+
+  typeSelect.addEventListener('change', () => applyType(typeSelect.value, defaultValueForType(typeSelect.value)));
+  expandBtn.addEventListener('click', () => {
+    if (!childrenLevel) return;
+    const collapsed = childrenLevel.hidden;
+    childrenLevel.hidden = !collapsed;
+    expandBtn.textContent = collapsed ? '▾' : '▸';
+  });
+
+  applyType(type, value);
   return row;
 }
 
@@ -828,7 +924,8 @@ function defaultValueForType(type) {
     case 'geopoint': return { __type: 'geopoint', lat: 0, lng: 0 };
     case 'reference': return { __type: 'reference', path: '' };
     case 'bytes': return { __type: 'bytes', base64: '' };
-    case 'map/array': return {};
+    case 'map': return {};
+    case 'array': return [];
     default: return '';
   }
 }
@@ -892,17 +989,17 @@ function renderValueInput(container, type, value) {
     input.placeholder = 'base64';
     input.value = value && value.base64 ? value.base64 : '';
     container.appendChild(input);
-  } else {
+  } else if (type === 'array') {
     const textarea = document.createElement('textarea');
     textarea.className = 'value-input json-input';
-    textarea.value = JSON.stringify(value ?? {}, null, 2);
+    textarea.value = JSON.stringify(value ?? [], null, 2);
     container.appendChild(textarea);
   }
 }
 
 function readFieldRow(row) {
   const type = row.dataset.type;
-  const container = row.querySelector('.field-value');
+  const container = row.querySelector(':scope > .field-main .field-value');
   if (type === 'string') return container.querySelector('input').value;
   if (type === 'number') return Number(container.querySelector('input').value);
   if (type === 'boolean') return container.querySelector('input').checked;
@@ -925,16 +1022,25 @@ function readFieldRow(row) {
   return JSON.parse(container.querySelector('textarea').value);
 }
 
-function collectEditorData() {
+function collectLevel(level) {
   const data = {};
-  document.querySelectorAll('#editor-fields .field-row').forEach((row) => {
-    const keyInput = row.querySelector('.field-key');
-    if (!keyInput) return;
+  Array.from(level.children).forEach((row) => {
+    if (!row.classList.contains('field-row')) return;
+    const keyInput = row.querySelector(':scope > .field-main .field-key');
     const key = keyInput.value.trim();
     if (!key) return;
-    data[key] = readFieldRow(row);
+    if (row.dataset.type === 'map') {
+      const children = row.querySelector(':scope > .field-children');
+      data[key] = children ? collectLevel(children) : {};
+    } else {
+      data[key] = readFieldRow(row);
+    }
   });
   return data;
+}
+
+function collectEditorData() {
+  return collectLevel(document.getElementById('editor-fields'));
 }
 
 document.getElementById('editor-close-btn').addEventListener('click', () => {
@@ -942,22 +1048,51 @@ document.getElementById('editor-close-btn').addEventListener('click', () => {
   state.editingDoc = null;
 });
 
+document.getElementById('cancel-doc-btn').addEventListener('click', () => {
+  document.getElementById('editor-panel').hidden = true;
+  state.editingDoc = null;
+});
+
+document.getElementById('auto-id-btn').addEventListener('click', () => {
+  const input = document.getElementById('field-doc-id');
+  input.value = '';
+  input.focus();
+  updateDocIdHint();
+});
+
+document.getElementById('field-doc-id').addEventListener('input', updateDocIdHint);
+
+async function saveActiveDocument() {
+  const data = collectEditorData();
+  const { isNew, connId, collectionPath, id } = state.editingDoc;
+  if (isNew) {
+    const idInput = document.getElementById('field-doc-id').value.trim();
+    await api.send('POST', `/api/connections/${connId}/document/${encodeURIComponentPath(collectionPath)}`, {
+      id: idInput || undefined,
+      data,
+    });
+  } else {
+    await api.send('PUT', `/api/connections/${connId}/document/${encodeURIComponentPath(`${collectionPath}/${id}`)}`, { data });
+  }
+  return { connId, collectionPath };
+}
+
 document.getElementById('save-doc-btn').addEventListener('click', async () => {
   try {
-    const data = collectEditorData();
-    const { isNew, connId, collectionPath, id } = state.editingDoc;
-    if (isNew) {
-      const idInput = document.getElementById('field-doc-id').value.trim();
-      await api.send('POST', `/api/connections/${connId}/document/${encodeURIComponentPath(collectionPath)}`, {
-        id: idInput || undefined,
-        data,
-      });
-    } else {
-      await api.send('PUT', `/api/connections/${connId}/document/${encodeURIComponentPath(`${collectionPath}/${id}`)}`, { data });
-    }
+    const { connId, collectionPath } = await saveActiveDocument();
     document.getElementById('editor-panel').hidden = true;
     state.editingDoc = null;
     await refreshTab(connId, collectionPath);
+  } catch (err) {
+    showBanner(`Erro ao salvar: ${err.message}`);
+  }
+});
+
+document.getElementById('save-add-another-btn').addEventListener('click', async () => {
+  try {
+    const { connId, collectionPath } = await saveActiveDocument();
+    await refreshTab(connId, collectionPath);
+    openEditorForNew(connId, collectionPath);
   } catch (err) {
     showBanner(`Erro ao salvar: ${err.message}`);
   }
