@@ -35,10 +35,10 @@ function validateConnectionInput({ name, type, projectId, emulatorHost, credenti
 }
 
 router.post('/connections', (req, res) => {
-  const { name, type, projectId, emulatorHost, credentialJson } = req.body;
+  const { name, type, projectId, emulatorHost, credentialJson, databaseId } = req.body;
   const error = validateConnectionInput(req.body);
   if (error) return res.status(400).json({ error });
-  const created = store.createConnection({ name, type, projectId, emulatorHost, credentialJson });
+  const created = store.createConnection({ name, type, projectId, emulatorHost, credentialJson, databaseId });
   const { credentialJson: _omit, ...safe } = created;
   res.status(201).json(safe);
 });

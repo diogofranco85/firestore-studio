@@ -1,4 +1,5 @@
 const admin = require('firebase-admin');
+const { getFirestore } = require('firebase-admin/firestore');
 const { getConnection } = require('./connectionsStore');
 
 // Cada conexão define seu próprio host via settings({host}) — a env var
@@ -28,7 +29,7 @@ async function getClient(connectionId) {
     }
   }
 
-  const db = admin.firestore(app);
+  const db = getFirestore(app, conn.databaseId || '(default)');
   if (conn.type === 'emulator') {
     db.settings({ host: conn.emulatorHost, ssl: false });
   }
