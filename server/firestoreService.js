@@ -1,0 +1,56 @@
+const { FieldPath } = require('firebase-admin/firestore');
+const { db } = require('./firestoreClient');
+const { toWire, fromWire } = require('./serialize');
+
+async function listCollections(parentPath) {
+  const ref = parentPath ? db.doc(parentPath) : db;
+  const collections = await ref.listCollections();
+  return collections.map((c) => c.id);
+}
+
+async function listDocuments(collectionPath, { pageSize = 50, cursorDocId } = {}) {
+  let query = db.collection(collectionPath).orderBy(FieldPath.documentId()).limit(pageSize);
+  if (cursorDocId) {
+    const cursorSnap = await db.collection(collectionPath).doc(cursorDocId).get();
+    query = query.startAfter(cursorSnap);
+  }
+  const snapshot = await query.get();
+  return snapshot.docs.map((doc) => ({ id: doc.id, data: toWire(doc.data()) }));
+}
+
+async function getDocument(docPath) {
+  const snap = await db.doc(docPath).get();
+  if (!snap.exists) return null;
+  const subcollections = await snap.ref.listCollections();
+  return {
+    id: snap.id,
+    data: toWire(snap.data()),
+    subcollections: subcollections.map((c) => c.id),
+  };
+}
+
+async function createDocument(collectionPath, { id, data }) {
+  const converted = fromWire(data);
+  const colRef = db.collection(collectionPath);
+  const docRef = id ? colRef.doc(id) : colRef.doc();
+  await docRef.set(converted);
+  return docRef.id;
+}
+
+async function updateDocument(docPath, data) {
+  const converted = fromWire(data);
+  await db.doc(docPath).set(converted);
+}
+
+async function deleteDocument(docPath) {
+  await db.doc(docPath).delete();
+}
+
+module.exports = {
+  listCollections,
+  listDocuments,
+  getDocument,
+  createDocument,
+  updateDocument,
+  deleteDocument,
+};
