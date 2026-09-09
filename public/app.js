@@ -4,22 +4,42 @@ const state = {
   editingDoc: null,
 };
 
+let pendingRequests = 0;
+function showLoading() {
+  pendingRequests += 1;
+  document.getElementById('loading-bar').hidden = false;
+}
+function hideLoading() {
+  pendingRequests = Math.max(0, pendingRequests - 1);
+  if (pendingRequests === 0) document.getElementById('loading-bar').hidden = true;
+}
+
 const api = {
   async get(path) {
-    const res = await fetch(path);
-    const body = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(body.error || `Erro ${res.status}`);
-    return body;
+    showLoading();
+    try {
+      const res = await fetch(path);
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error || `Erro ${res.status}`);
+      return body;
+    } finally {
+      hideLoading();
+    }
   },
   async send(method, path, payload) {
-    const res = await fetch(path, {
-      method,
-      headers: { 'Content-Type': 'application/json' },
-      body: payload === undefined ? undefined : JSON.stringify(payload),
-    });
-    const body = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(body.error || `Erro ${res.status}`);
-    return body;
+    showLoading();
+    try {
+      const res = await fetch(path, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: payload === undefined ? undefined : JSON.stringify(payload),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error || `Erro ${res.status}`);
+      return body;
+    } finally {
+      hideLoading();
+    }
   },
 };
 

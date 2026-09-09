@@ -12,6 +12,24 @@
   --radius: 6px;
 }
 
+#loading-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--accent);
+  z-index: 200;
+  transform-origin: left;
+  animation: loading-bar-slide 1s ease-in-out infinite;
+}
+#loading-bar[hidden] { display: none; }
+@keyframes loading-bar-slide {
+  0% { transform: scaleX(0); opacity: 1; }
+  50% { transform: scaleX(0.6); }
+  100% { transform: scaleX(1); opacity: 0; }
+}
+
 * { box-sizing: border-box; }
 body {
   margin: 0;
