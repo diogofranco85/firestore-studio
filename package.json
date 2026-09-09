@@ -1,0 +1,16 @@
+{
+  "name": "firestore-studio",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Local data browser/editor for the Firestore emulator",
+  "main": "server/start.js",
+  "scripts": {
+    "start": "node server/start.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "firebase-admin": "^12.6.0"
+  }
+}
