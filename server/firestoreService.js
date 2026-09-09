@@ -1,14 +1,13 @@
 const { FieldPath } = require('firebase-admin/firestore');
-const { db } = require('./firestoreClient');
 const { toWire, fromWire } = require('./serialize');
 
-async function listCollections(parentPath) {
+async function listCollections(db, parentPath) {
   const ref = parentPath ? db.doc(parentPath) : db;
   const collections = await ref.listCollections();
   return collections.map((c) => c.id);
 }
 
-async function listDocuments(collectionPath, { pageSize = 50, cursorDocId } = {}) {
+async function listDocuments(db, collectionPath, { pageSize = 50, cursorDocId } = {}) {
   let query = db.collection(collectionPath).orderBy(FieldPath.documentId()).limit(pageSize);
   if (cursorDocId) {
     const cursorSnap = await db.collection(collectionPath).doc(cursorDocId).get();
@@ -18,7 +17,7 @@ async function listDocuments(collectionPath, { pageSize = 50, cursorDocId } = {}
   return snapshot.docs.map((doc) => ({ id: doc.id, data: toWire(doc.data()) }));
 }
 
-async function queryDocuments(collectionPath, { wheres = [], orderBy, limit = 50 } = {}) {
+async function queryDocuments(db, collectionPath, { wheres = [], orderBy, limit = 50 } = {}) {
   let query = wheres.reduce((q, { field, op, value }) => q.where(field, op, value), db.collection(collectionPath));
   if (orderBy && orderBy.field) query = query.orderBy(orderBy.field, orderBy.dir === 'desc' ? 'desc' : 'asc');
   query = query.limit(limit);
@@ -26,7 +25,7 @@ async function queryDocuments(collectionPath, { wheres = [], orderBy, limit = 50
   return snapshot.docs.map((doc) => ({ id: doc.id, data: toWire(doc.data()) }));
 }
 
-async function getDocument(docPath) {
+async function getDocument(db, docPath) {
   const snap = await db.doc(docPath).get();
   if (!snap.exists) return null;
   const subcollections = await snap.ref.listCollections();
@@ -37,7 +36,7 @@ async function getDocument(docPath) {
   };
 }
 
-async function createDocument(collectionPath, { id, data }) {
+async function createDocument(db, collectionPath, { id, data }) {
   const converted = fromWire(data);
   const colRef = db.collection(collectionPath);
   const docRef = id ? colRef.doc(id) : colRef.doc();
@@ -45,12 +44,12 @@ async function createDocument(collectionPath, { id, data }) {
   return docRef.id;
 }
 
-async function updateDocument(docPath, data) {
+async function updateDocument(db, docPath, data) {
   const converted = fromWire(data);
   await db.doc(docPath).set(converted);
 }
 
-async function deleteDocument(docPath) {
+async function deleteDocument(db, docPath) {
   await db.doc(docPath).delete();
 }
 
