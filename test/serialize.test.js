@@ -1,8 +1,29 @@
 const test = require('node:test');
 const assert = require('node:assert');
+const path = require('node:path');
+const fs = require('node:fs');
 const { Timestamp, GeoPoint } = require('firebase-admin/firestore');
-const { db } = require('../server/firestoreClient');
+
+const dbPath = path.join(__dirname, '.tmp-serialize.db');
+process.env.CONNECTIONS_DB_PATH = dbPath;
+test.after(() => fs.rmSync(dbPath, { force: true }));
+
+const store = require('../server/connectionsStore');
+const { getClient } = require('../server/firestoreClient');
+const config = require('../server/config');
 const { toWire, fromWire } = require('../server/serialize');
+
+let db;
+
+test.before(async () => {
+  const conn = store.createConnection({
+    name: 'Serialize Test',
+    type: 'emulator',
+    projectId: config.projectId,
+    emulatorHost: config.emulatorHost,
+  });
+  db = await getClient(conn.id);
+});
 
 test('toWire converts primitives unchanged', () => {
   assert.strictEqual(toWire('hello'), 'hello');
@@ -36,7 +57,7 @@ test('toWire/fromWire round-trip a DocumentReference', () => {
   const ref = db.doc('users/abc123');
   const wire = toWire(ref);
   assert.deepStrictEqual(wire, { __type: 'reference', path: 'users/abc123' });
-  const back = fromWire(wire);
+  const back = fromWire(wire, db);
   assert.strictEqual(back.path, 'users/abc123');
 });
 

@@ -1,12 +1,10 @@
 const config = require('./config');
 const app = require('./app');
-const { db } = require('./firestoreClient');
+const store = require('./connectionsStore');
 
-const date = new Date();
+store.seedDefaultIfEmpty({ projectId: config.projectId, emulatorHost: config.emulatorHost });
 
-console.log(`Inicializando Firestore studio...`)
-console.log(date.toISOString())
-async function start() {
+function start() {
   app.listen(config.port, () => {
     console.log(`Firestore Studio rodando em http://localhost:${config.port}`);
   });
@@ -16,6 +14,5 @@ process.on("SIGHUP", function () {
   console.log("Hot Reload :: Graceful shutdown")
   process.kill(process.pid, "SIGTERM");
 })
-
 
 start();

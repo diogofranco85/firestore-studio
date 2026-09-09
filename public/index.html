@@ -9,10 +9,10 @@
   <div id="app">
     <aside id="sidebar">
       <div id="sidebar-header">
-        <h2>Collections</h2>
-        <button id="add-collection-btn" title="Nova coleção">+ Nova Coleção</button>
+        <h2>Conexões</h2>
+        <button id="add-connection-btn" title="Nova conexão">+ Nova Conexão</button>
       </div>
-      <ul id="collection-tree"></ul>
+      <ul id="connection-tree"></ul>
     </aside>
     <main id="content">
       <div id="banner" class="banner" hidden></div>
@@ -64,22 +64,40 @@
       </div>
     </main>
   </div>
-  <div id="create-collection-modal" class="modal-overlay" hidden>
+  <div id="connection-modal" class="modal-overlay" hidden>
     <div class="modal">
       <div class="modal-header">
-        <span class="modal-title">Nova coleção</span>
-        <button id="create-collection-close-btn" class="modal-close-btn">×</button>
+        <span class="modal-title" id="connection-modal-title">Nova conexão</span>
+        <button id="connection-close-btn" class="modal-close-btn">×</button>
       </div>
       <div class="modal-body">
-        <label class="modal-label" for="new-collection-name">Nome da coleção</label>
-        <input id="new-collection-name" class="modal-input" type="text" placeholder="ex: users" />
-        <label class="modal-label" for="new-collection-doc-id">ID do primeiro documento (opcional)</label>
-        <input id="new-collection-doc-id" class="modal-input" type="text" placeholder="gerado automaticamente se vazio" />
-        <div id="create-collection-error" class="modal-error" hidden></div>
+        <label class="modal-label" for="conn-name">Nome</label>
+        <input id="conn-name" class="modal-input" type="text" placeholder="ex: Produção" />
+
+        <label class="modal-label" for="conn-type">Tipo</label>
+        <select id="conn-type" class="modal-input">
+          <option value="emulator">Emulador</option>
+          <option value="production">Produção</option>
+        </select>
+
+        <label class="modal-label" for="conn-project-id">Project ID</label>
+        <input id="conn-project-id" class="modal-input" type="text" placeholder="ex: meu-projeto" />
+
+        <div id="conn-emulator-field">
+          <label class="modal-label" for="conn-emulator-host">Host do emulador</label>
+          <input id="conn-emulator-host" class="modal-input" type="text" placeholder="ex: localhost:4588" />
+        </div>
+
+        <div id="conn-production-field" hidden>
+          <label class="modal-label" for="conn-credential">Credencial (JSON do service account)</label>
+          <textarea id="conn-credential" class="modal-input json-input" placeholder="{ ... }"></textarea>
+        </div>
+
+        <div id="connection-error" class="modal-error" hidden></div>
       </div>
       <div class="modal-actions">
-        <button id="create-collection-cancel-btn" class="modal-btn-secondary">Cancelar</button>
-        <button id="create-collection-confirm-btn" class="modal-btn-primary">Criar</button>
+        <button id="connection-cancel-btn" class="modal-btn-secondary">Cancelar</button>
+        <button id="connection-confirm-btn" class="modal-btn-primary">Salvar</button>
       </div>
     </div>
   </div>

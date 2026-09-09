@@ -37,86 +37,152 @@ function hideBanner() {
   document.getElementById('banner').hidden = true;
 }
 
-async function loadRootCollections() {
+async function loadConnections() {
   try {
-    const { collections } = await api.get('/api/collections');
-    const tree = document.getElementById('collection-tree');
+    const { connections } = await api.get('/api/connections');
+    const tree = document.getElementById('connection-tree');
     tree.innerHTML = '';
-    collections.forEach((name) => tree.appendChild(buildCollectionNode(name, name)));
+    connections.forEach((conn) => tree.appendChild(buildConnectionNode(conn)));
     hideBanner();
   } catch (err) {
-    showBanner(`Não foi possível conectar ao emulador: ${err.message}`);
+    showBanner(`Não foi possível carregar as conexões: ${err.message}`);
   }
 }
 
-function buildCollectionNode(path, label) {
+function buildConnectionNode(conn) {
   const li = document.createElement('li');
   li.className = 'tree-node';
-  li.dataset.path = path;
+  li.dataset.connId = conn.id;
 
   const row = document.createElement('div');
   row.className = 'tree-row';
 
+  const expandBtn = document.createElement('button');
+  expandBtn.className = 'expand-btn';
+  expandBtn.textContent = '▸';
+
   const nameSpan = document.createElement('span');
   nameSpan.className = 'tree-label';
-  nameSpan.textContent = label;
-  nameSpan.addEventListener('click', () => openTab(path));
+  nameSpan.textContent = conn.name;
 
+  const editBtn = document.createElement('button');
+  editBtn.className = 'expand-btn';
+  editBtn.textContent = '✎';
+  editBtn.title = 'Editar conexão';
+  editBtn.addEventListener('click', (e) => { e.stopPropagation(); openConnectionModal(conn); });
+
+  const deleteBtn = document.createElement('button');
+  deleteBtn.className = 'expand-btn';
+  deleteBtn.textContent = '×';
+  deleteBtn.title = 'Excluir conexão';
+  deleteBtn.addEventListener('click', async (e) => {
+    e.stopPropagation();
+    if (!confirm(`Excluir a conexão "${conn.name}"?`)) return;
+    await api.send('DELETE', `/api/connections/${conn.id}`);
+    state.tabs = state.tabs.filter((t) => t.connId !== conn.id);
+    renderTabBar();
+    renderActiveTab();
+    loadConnections();
+  });
+
+  row.appendChild(expandBtn);
   row.appendChild(nameSpan);
+  row.appendChild(editBtn);
+  row.appendChild(deleteBtn);
   li.appendChild(row);
+
+  const childList = document.createElement('ul');
+  childList.className = 'tree-children';
+  childList.hidden = true;
+  li.appendChild(childList);
+
+  let loaded = false;
+  const toggle = async () => {
+    if (!loaded) {
+      try {
+        const { collections } = await api.get(`/api/connections/${conn.id}/collections`);
+        childList.innerHTML = '';
+        collections.forEach((name) => {
+          const collLi = document.createElement('li');
+          collLi.className = 'tree-node';
+          collLi.dataset.connId = conn.id;
+          collLi.dataset.path = name;
+          const collRow = document.createElement('div');
+          collRow.className = 'tree-row';
+          const collLabel = document.createElement('span');
+          collLabel.className = 'tree-label';
+          collLabel.textContent = name;
+          collLabel.addEventListener('click', () => openTab(conn.id, name));
+          collRow.appendChild(collLabel);
+          collLi.appendChild(collRow);
+          childList.appendChild(collLi);
+        });
+        loaded = true;
+      } catch (err) {
+        showBanner(`Erro ao carregar coleções de ${conn.name}: ${err.message}`);
+        return;
+      }
+    }
+    childList.hidden = !childList.hidden;
+    expandBtn.textContent = childList.hidden ? '▸' : '▾';
+  };
+  expandBtn.addEventListener('click', toggle);
+  nameSpan.addEventListener('click', toggle);
 
   return li;
 }
 
-function showModalError(message) {
-  const el = document.getElementById('create-collection-error');
-  el.textContent = message;
-  el.hidden = false;
+let editingConnectionId = null;
+
+function updateConnectionModalFields() {
+  const isProd = document.getElementById('conn-type').value === 'production';
+  document.getElementById('conn-emulator-field').hidden = isProd;
+  document.getElementById('conn-production-field').hidden = !isProd;
 }
 
-function hideModalError() {
-  document.getElementById('create-collection-error').hidden = true;
+function openConnectionModal(conn) {
+  editingConnectionId = conn ? conn.id : null;
+  document.getElementById('connection-modal-title').textContent = conn ? 'Editar conexão' : 'Nova conexão';
+  document.getElementById('conn-name').value = conn ? conn.name : '';
+  document.getElementById('conn-type').value = conn ? conn.type : 'emulator';
+  document.getElementById('conn-project-id').value = conn ? conn.projectId : '';
+  document.getElementById('conn-emulator-host').value = conn ? conn.emulatorHost || '' : '';
+  document.getElementById('conn-credential').value = '';
+  updateConnectionModalFields();
+  document.getElementById('connection-error').hidden = true;
+  document.getElementById('connection-modal').hidden = false;
 }
 
-function openCreateCollectionModal() {
-  document.getElementById('new-collection-name').value = '';
-  document.getElementById('new-collection-doc-id').value = '';
-  hideModalError();
-  document.getElementById('create-collection-modal').hidden = false;
-  document.getElementById('new-collection-name').focus();
+function closeConnectionModal() {
+  document.getElementById('connection-modal').hidden = true;
 }
 
-function closeCreateCollectionModal() {
-  document.getElementById('create-collection-modal').hidden = true;
-}
+async function submitConnection() {
+  const name = document.getElementById('conn-name').value.trim();
+  const type = document.getElementById('conn-type').value;
+  const projectId = document.getElementById('conn-project-id').value.trim();
+  const emulatorHost = document.getElementById('conn-emulator-host').value.trim();
+  const credentialJson = document.getElementById('conn-credential').value.trim();
 
-async function submitCreateCollection() {
-  const name = document.getElementById('new-collection-name').value.trim();
-  const docId = document.getElementById('new-collection-doc-id').value.trim();
-
-  if (!name) {
-    showModalError('Informe o nome da coleção.');
+  const errEl = document.getElementById('connection-error');
+  if (!name || !projectId) {
+    errEl.textContent = 'Nome e Project ID são obrigatórios.';
+    errEl.hidden = false;
     return;
   }
-  if (name.includes('/')) {
-    showModalError('Nome de coleção não pode conter "/".');
-    return;
-  }
 
+  const payload = { name, type, projectId, emulatorHost: emulatorHost || undefined, credentialJson: credentialJson || undefined };
   try {
-    await api.send('POST', `/api/document/${encodeURIComponentPath(name)}`, {
-      id: docId || undefined,
-      data: {},
-    });
-    const tree = document.getElementById('collection-tree');
-    const existing = tree.querySelector(`:scope > li[data-path="${CSS.escape(name)}"]`);
-    if (!existing) {
-      tree.appendChild(buildCollectionNode(name, name));
+    if (editingConnectionId) {
+      await api.send('PUT', `/api/connections/${editingConnectionId}`, payload);
+    } else {
+      await api.send('POST', '/api/connections', payload);
     }
-    hideBanner();
-    closeCreateCollectionModal();
+    closeConnectionModal();
+    loadConnections();
   } catch (err) {
-    showModalError(`Erro ao criar coleção: ${err.message}`);
+    errEl.textContent = `Erro ao salvar conexão: ${err.message}`;
+    errEl.hidden = false;
   }
 }
 
@@ -126,15 +192,16 @@ function getActiveTab() {
   return state.tabs.find((t) => t.id === state.activeTabId) || null;
 }
 
-function getTabByPath(path) {
-  return state.tabs.find((t) => t.path === path) || null;
+function getTabByPath(connId, path) {
+  return state.tabs.find((t) => t.connId === connId && t.path === path) || null;
 }
 
-function openTab(path) {
-  let tab = getTabByPath(path);
+function openTab(connId, path) {
+  let tab = getTabByPath(connId, path);
   if (!tab) {
     tab = {
-      id: `${path}::${Date.now()}`,
+      id: `${connId}::${path}::${Date.now()}`,
+      connId,
       path,
       wheres: [],
       orderByField: '',
@@ -167,16 +234,6 @@ function setActiveTab(id) {
   state.activeTabId = id;
   renderTabBar();
   renderActiveTab();
-
-  const previouslySelected = document.querySelector('#collection-tree .tree-row.selected');
-  if (previouslySelected) previouslySelected.classList.remove('selected');
-  const tab = getActiveTab();
-  if (tab) {
-    const selectedRow = document.querySelector(
-      `#collection-tree li[data-path="${CSS.escape(tab.path)}"] > .tree-row`
-    );
-    if (selectedRow) selectedRow.classList.add('selected');
-  }
 }
 
 function renderTabBar() {
@@ -226,12 +283,12 @@ async function fetchTabDocuments(tab, cursorDocId) {
         limit: tab.limit,
         orderBy: tab.orderByField ? { field: tab.orderByField, dir: tab.orderByDir } : undefined,
       };
-      ({ documents } = await api.send('POST', `/api/query/${encodeURIComponentPath(tab.path)}`, body));
+      ({ documents } = await api.send('POST', `/api/connections/${tab.connId}/query/${encodeURIComponentPath(tab.path)}`, body));
     } else {
       const query = cursorDocId
         ? `?pageSize=${tab.limit}&cursor=${encodeURIComponent(cursorDocId)}`
         : `?pageSize=${tab.limit}`;
-      ({ documents } = await api.get(`/api/documents/${encodeURIComponentPath(tab.path)}${query}`));
+      ({ documents } = await api.get(`/api/connections/${tab.connId}/documents/${encodeURIComponentPath(tab.path)}${query}`));
     }
     tab.documents = documents;
     hideBanner();
@@ -241,8 +298,8 @@ async function fetchTabDocuments(tab, cursorDocId) {
   if (tab.id === state.activeTabId) renderActiveTab();
 }
 
-async function refreshTab(path) {
-  const tab = getTabByPath(path);
+async function refreshTab(connId, path) {
+  const tab = getTabByPath(connId, path);
   if (tab) await fetchTabDocuments(tab);
 }
 
@@ -396,7 +453,7 @@ function renderTable(tab) {
 
   documents.forEach((doc) => {
     const row = document.createElement('tr');
-    row.addEventListener('click', () => openEditorForExisting(tab.path, doc.id));
+    row.addEventListener('click', () => openEditorForExisting(tab.connId, tab.path, doc.id));
     columns.forEach((col) => {
       const td = document.createElement('td');
       td.textContent = col === 'id' ? doc.id : previewValue(doc.data[col]);
@@ -414,7 +471,7 @@ function renderTree(tab) {
   const root = document.getElementById('view-tree');
   root.innerHTML = '';
   tab.documents.forEach((doc) => {
-    root.appendChild(buildTreeNode(doc.id, doc.data, () => openEditorForExisting(tab.path, doc.id)));
+    root.appendChild(buildTreeNode(doc.id, doc.data, () => openEditorForExisting(tab.connId, tab.path, doc.id)));
   });
 }
 
@@ -474,51 +531,45 @@ function previewValue(value) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  loadRootCollections();
+  loadConnections();
 
-  document.getElementById('add-collection-btn').addEventListener('click', openCreateCollectionModal);
-  document.getElementById('create-collection-close-btn').addEventListener('click', closeCreateCollectionModal);
-  document.getElementById('create-collection-cancel-btn').addEventListener('click', closeCreateCollectionModal);
-  document.getElementById('create-collection-confirm-btn').addEventListener('click', submitCreateCollection);
-
-  document.getElementById('create-collection-modal').addEventListener('click', (event) => {
-    if (event.target.id === 'create-collection-modal') closeCreateCollectionModal();
-  });
-
-  ['new-collection-name', 'new-collection-doc-id'].forEach((id) => {
-    document.getElementById(id).addEventListener('keydown', (event) => {
-      if (event.key === 'Enter') submitCreateCollection();
-    });
+  document.getElementById('add-connection-btn').addEventListener('click', () => openConnectionModal(null));
+  document.getElementById('connection-close-btn').addEventListener('click', closeConnectionModal);
+  document.getElementById('connection-cancel-btn').addEventListener('click', closeConnectionModal);
+  document.getElementById('connection-confirm-btn').addEventListener('click', submitConnection);
+  document.getElementById('conn-type').addEventListener('change', updateConnectionModalFields);
+  document.getElementById('connection-modal').addEventListener('click', (event) => {
+    if (event.target.id === 'connection-modal') closeConnectionModal();
   });
 
   document.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape' && !document.getElementById('create-collection-modal').hidden) {
-      closeCreateCollectionModal();
+    if (event.key === 'Escape' && !document.getElementById('connection-modal').hidden) {
+      closeConnectionModal();
     }
   });
 });
 
 const TYPE_OPTIONS = ['string', 'number', 'boolean', 'null', 'timestamp', 'geopoint', 'reference', 'bytes', 'map/array'];
 
-function openEditor(title, docId, collectionPath, data) {
-  state.editingDoc = { collectionPath, id: docId, isNew: docId === null };
+function openEditor(title, docId, connId, collectionPath, data) {
+  state.editingDoc = { connId, collectionPath, id: docId, isNew: docId === null };
   document.getElementById('editor-title').textContent = title;
   document.getElementById('editor-panel').hidden = false;
   renderEditorFields(data || {});
   document.getElementById('delete-doc-btn').hidden = state.editingDoc.isNew;
 }
 
-async function openEditorForExisting(collectionPath, docId) {
+async function openEditorForExisting(connId, collectionPath, docId) {
   try {
-    const doc = await api.get(`/api/document/${encodeURIComponentPath(`${collectionPath}/${docId}`)}`);
-    openEditor(`${collectionPath}/${docId}`, docId, collectionPath, doc.data);
+    const doc = await api.get(`/api/connections/${connId}/document/${encodeURIComponentPath(`${collectionPath}/${docId}`)}`);
+    openEditor(`${collectionPath}/${docId}`, docId, connId, collectionPath, doc.data);
   } catch (err) {
     showBanner(`Erro ao abrir documento: ${err.message}`);
   }
 }
 
-function openEditorForNew(collectionPath) {
-  openEditor(`Novo documento em ${collectionPath}`, null, collectionPath, {});
+function openEditorForNew(connId, collectionPath) {
+  openEditor(`Novo documento em ${collectionPath}`, null, connId, collectionPath, {});
 }
 
 function detectType(value) {
@@ -723,19 +774,19 @@ document.getElementById('editor-close-btn').addEventListener('click', () => {
 document.getElementById('save-doc-btn').addEventListener('click', async () => {
   try {
     const data = collectEditorData();
-    const { isNew, collectionPath, id } = state.editingDoc;
+    const { isNew, connId, collectionPath, id } = state.editingDoc;
     if (isNew) {
       const idInput = document.getElementById('field-doc-id').value.trim();
-      await api.send('POST', `/api/document/${encodeURIComponentPath(collectionPath)}`, {
+      await api.send('POST', `/api/connections/${connId}/document/${encodeURIComponentPath(collectionPath)}`, {
         id: idInput || undefined,
         data,
       });
     } else {
-      await api.send('PUT', `/api/document/${encodeURIComponentPath(`${collectionPath}/${id}`)}`, { data });
+      await api.send('PUT', `/api/connections/${connId}/document/${encodeURIComponentPath(`${collectionPath}/${id}`)}`, { data });
     }
     document.getElementById('editor-panel').hidden = true;
     state.editingDoc = null;
-    await refreshTab(collectionPath);
+    await refreshTab(connId, collectionPath);
   } catch (err) {
     showBanner(`Erro ao salvar: ${err.message}`);
   }
@@ -744,11 +795,11 @@ document.getElementById('save-doc-btn').addEventListener('click', async () => {
 document.getElementById('delete-doc-btn').addEventListener('click', async () => {
   if (!confirm('Apagar este documento?')) return;
   try {
-    const { collectionPath, id } = state.editingDoc;
-    await api.send('DELETE', `/api/document/${encodeURIComponentPath(`${collectionPath}/${id}`)}`);
+    const { connId, collectionPath, id } = state.editingDoc;
+    await api.send('DELETE', `/api/connections/${connId}/document/${encodeURIComponentPath(`${collectionPath}/${id}`)}`);
     document.getElementById('editor-panel').hidden = true;
     state.editingDoc = null;
-    await refreshTab(collectionPath);
+    await refreshTab(connId, collectionPath);
   } catch (err) {
     showBanner(`Erro ao apagar: ${err.message}`);
   }
@@ -756,5 +807,5 @@ document.getElementById('delete-doc-btn').addEventListener('click', async () => 
 
 document.getElementById('add-doc-btn').addEventListener('click', () => {
   const tab = getActiveTab();
-  if (tab) openEditorForNew(tab.path);
+  if (tab) openEditorForNew(tab.connId, tab.path);
 });

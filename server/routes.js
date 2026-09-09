@@ -1,4 +1,6 @@
 const express = require('express');
+const store = require('./connectionsStore');
+const { getClient, resetClient } = require('./firestoreClient');
 const svc = require('./firestoreService');
 
 const router = express.Router();
@@ -7,49 +9,109 @@ function handleError(err, res) {
   if (/ECONNREFUSED/.test(err.message)) {
     return res.status(503).json({ error: 'Não foi possível conectar ao emulador do Firestore.' });
   }
+  if (/Conexão não encontrada/.test(err.message)) {
+    return res.status(404).json({ error: err.message });
+  }
   res.status(500).json({ error: err.message });
 }
 
-router.get('/collections', async (req, res) => {
+// ---- Connections CRUD ----
+
+router.get('/connections', (req, res) => {
+  res.json({ connections: store.listConnections() });
+});
+
+router.post('/connections', (req, res) => {
+  const { name, type, projectId, emulatorHost, credentialJson } = req.body;
+  if (!name || !type || !projectId) {
+    return res.status(400).json({ error: 'name, type e projectId são obrigatórios' });
+  }
+  if (type === 'emulator' && !emulatorHost) {
+    return res.status(400).json({ error: 'emulatorHost é obrigatório para conexões de emulador' });
+  }
+  if (type === 'production' && !credentialJson) {
+    return res.status(400).json({ error: 'credentialJson é obrigatório para conexões de produção' });
+  }
+  const created = store.createConnection({ name, type, projectId, emulatorHost, credentialJson });
+  const { credentialJson: _omit, ...safe } = created;
+  res.status(201).json(safe);
+});
+
+router.put('/connections/:id', async (req, res) => {
   try {
-    res.json({ collections: await svc.listCollections() });
+    const updated = store.updateConnection(req.params.id, req.body);
+    if (!updated) return res.status(404).json({ error: 'Conexão não encontrada' });
+    await resetClient(req.params.id);
+    const { credentialJson: _omit, ...safe } = updated;
+    res.json(safe);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.delete('/connections/:id', async (req, res) => {
+  try {
+    const ok = store.deleteConnection(req.params.id);
+    await resetClient(req.params.id);
+    res.json({ ok });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ---- Data routes, nested under a connection ----
+
+const data = express.Router({ mergeParams: true });
+
+data.use(async (req, res, next) => {
+  try {
+    req.db = await getClient(req.params.connId);
+    next();
   } catch (err) {
     handleError(err, res);
   }
 });
 
-router.get('/collections/*', async (req, res) => {
+data.get('/collections', async (req, res) => {
   try {
-    res.json({ collections: await svc.listCollections(req.params[0]) });
+    res.json({ collections: await svc.listCollections(req.db) });
   } catch (err) {
     handleError(err, res);
   }
 });
 
-router.get('/documents/*', async (req, res) => {
+data.get('/collections/*', async (req, res) => {
+  try {
+    res.json({ collections: await svc.listCollections(req.db, req.params[0]) });
+  } catch (err) {
+    handleError(err, res);
+  }
+});
+
+data.get('/documents/*', async (req, res) => {
   try {
     const pageSize = parseInt(req.query.pageSize, 10) || 50;
     const cursorDocId = req.query.cursor || undefined;
-    const documents = await svc.listDocuments(req.params[0], { pageSize, cursorDocId });
+    const documents = await svc.listDocuments(req.db, req.params[0], { pageSize, cursorDocId });
     res.json({ documents });
   } catch (err) {
     handleError(err, res);
   }
 });
 
-router.post('/query/*', async (req, res) => {
+data.post('/query/*', async (req, res) => {
   try {
     const { wheres, orderBy, limit } = req.body;
-    const documents = await svc.queryDocuments(req.params[0], { wheres, orderBy, limit });
+    const documents = await svc.queryDocuments(req.db, req.params[0], { wheres, orderBy, limit });
     res.json({ documents });
   } catch (err) {
     handleError(err, res);
   }
 });
 
-router.get('/document/*', async (req, res) => {
+data.get('/document/*', async (req, res) => {
   try {
-    const document = await svc.getDocument(req.params[0]);
+    const document = await svc.getDocument(req.db, req.params[0]);
     if (!document) return res.status(404).json({ error: 'Document not found' });
     res.json(document);
   } catch (err) {
@@ -57,39 +119,41 @@ router.get('/document/*', async (req, res) => {
   }
 });
 
-router.post('/document/*', async (req, res) => {
+data.post('/document/*', async (req, res) => {
   try {
-    const { id, data } = req.body;
-    if (!data || typeof data !== 'object') {
+    const { id, data: docData } = req.body;
+    if (!docData || typeof docData !== 'object') {
       return res.status(400).json({ error: 'Missing data object' });
     }
-    const newId = await svc.createDocument(req.params[0], { id, data });
+    const newId = await svc.createDocument(req.db, req.params[0], { id, data: docData });
     res.status(201).json({ id: newId });
   } catch (err) {
     handleError(err, res);
   }
 });
 
-router.put('/document/*', async (req, res) => {
+data.put('/document/*', async (req, res) => {
   try {
-    const { data } = req.body;
-    if (!data || typeof data !== 'object') {
+    const { data: docData } = req.body;
+    if (!docData || typeof docData !== 'object') {
       return res.status(400).json({ error: 'Missing data object' });
     }
-    await svc.updateDocument(req.params[0], data);
+    await svc.updateDocument(req.db, req.params[0], docData);
     res.json({ ok: true });
   } catch (err) {
     handleError(err, res);
   }
 });
 
-router.delete('/document/*', async (req, res) => {
+data.delete('/document/*', async (req, res) => {
   try {
-    await svc.deleteDocument(req.params[0]);
+    await svc.deleteDocument(req.db, req.params[0]);
     res.json({ ok: true });
   } catch (err) {
     handleError(err, res);
   }
 });
+
+router.use('/connections/:connId', data);
 
 module.exports = router;

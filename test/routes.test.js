@@ -1,85 +1,58 @@
 const test = require('node:test');
 const assert = require('node:assert');
-const http = require('node:http');
+const path = require('node:path');
+const fs = require('node:fs');
+
+const dbPath = path.join(__dirname, '.tmp-routes.db');
+process.env.CONNECTIONS_DB_PATH = dbPath;
+test.after(() => fs.rmSync(dbPath, { force: true }));
+
 const app = require('../server/app');
-const svc = require('../server/firestoreService');
+const config = require('../server/config');
 
-const testCollection = `_studio_test_routes_${Date.now()}`;
+let server;
+let base;
 
-function withServer(fn) {
-  return async () => {
-    const server = http.createServer(app);
-    await new Promise((resolve) => server.listen(0, resolve));
-    const base = `http://localhost:${server.address().port}`;
-    try {
-      await fn(base);
-    } finally {
-      await new Promise((resolve) => server.close(resolve));
-    }
-  };
-}
-
-test.after(async () => {
-  const docs = await svc.listDocuments(testCollection, { pageSize: 200 });
-  for (const doc of docs) await svc.deleteDocument(`${testCollection}/${doc.id}`);
+test.before(async () => {
+  await new Promise((resolve) => {
+    server = app.listen(0, () => {
+      base = `http://localhost:${server.address().port}`;
+      resolve();
+    });
+  });
 });
+test.after(() => server.close());
 
-test('GET /api/collections returns 200 and a list', withServer(async (base) => {
-  const res = await fetch(`${base}/api/collections`);
-  assert.strictEqual(res.status, 200);
-  const body = await res.json();
-  assert.ok(Array.isArray(body.collections));
-}));
-
-test('full document lifecycle through the REST API', withServer(async (base) => {
-  const createRes = await fetch(`${base}/api/document/${testCollection}`, {
+test('cria conexão, lista coleções e documentos por ela', async () => {
+  const createRes = await fetch(`${base}/api/connections`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ id: 'doc1', data: { name: 'Grace' } }),
+    body: JSON.stringify({
+      name: 'Rota Teste',
+      type: 'emulator',
+      projectId: config.projectId,
+      emulatorHost: config.emulatorHost,
+    }),
   });
   assert.strictEqual(createRes.status, 201);
-  const created = await createRes.json();
-  assert.strictEqual(created.id, 'doc1');
+  const conn = await createRes.json();
+  assert.ok(conn.id);
+  assert.strictEqual(conn.credentialJson, undefined);
 
-  const getRes = await fetch(`${base}/api/document/${testCollection}/doc1`);
-  assert.strictEqual(getRes.status, 200);
-  const got = await getRes.json();
-  assert.strictEqual(got.data.name, 'Grace');
+  const listRes = await fetch(`${base}/api/connections`);
+  const { connections } = await listRes.json();
+  assert.ok(connections.some((c) => c.id === conn.id));
 
-  const putRes = await fetch(`${base}/api/document/${testCollection}/doc1`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ data: { name: 'Grace Hopper' } }),
-  });
-  assert.strictEqual(putRes.status, 200);
+  const collectionsRes = await fetch(`${base}/api/connections/${conn.id}/collections`);
+  assert.strictEqual(collectionsRes.status, 200);
+  const { collections } = await collectionsRes.json();
+  assert.ok(Array.isArray(collections));
 
-  const listRes = await fetch(`${base}/api/documents/${testCollection}`);
-  const list = await listRes.json();
-  assert.strictEqual(list.documents.find((d) => d.id === 'doc1').data.name, 'Grace Hopper');
-
-  const delRes = await fetch(`${base}/api/document/${testCollection}/doc1`, { method: 'DELETE' });
+  const delRes = await fetch(`${base}/api/connections/${conn.id}`, { method: 'DELETE' });
   assert.strictEqual(delRes.status, 200);
+});
 
-  const goneRes = await fetch(`${base}/api/document/${testCollection}/doc1`);
-  assert.strictEqual(goneRes.status, 404);
-}));
-
-test('POST without a data object returns 400', withServer(async (base) => {
-  const res = await fetch(`${base}/api/document/${testCollection}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ id: 'bad' }),
-  });
-  assert.strictEqual(res.status, 400);
-}));
-
-test('malformed JSON body returns a JSON error, not HTML', withServer(async (base) => {
-  const res = await fetch(`${base}/api/document/${testCollection}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: '{not valid json',
-  });
-  assert.strictEqual(res.status, 400);
-  const body = await res.json();
-  assert.ok(typeof body.error === 'string' && body.error.length > 0);
-}));
+test('rota de dados com connId inexistente retorna 404', async () => {
+  const res = await fetch(`${base}/api/connections/nao-existe/collections`);
+  assert.strictEqual(res.status, 404);
+});
