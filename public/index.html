@@ -152,6 +152,12 @@
           <code>id</code> dentro do objeto tem prioridade sobre a chave do mapa; sem nenhum dos dois, o ID é gerado automaticamente.
         </label>
         <textarea id="import-json-text" class="modal-input json-input" placeholder='[{"id": "abc", "nome": "..."}]'></textarea>
+        <label class="modal-label" for="import-json-file">Ou selecione um arquivo .json</label>
+        <input id="import-json-file" type="file" accept="application/json,.json" class="modal-input" />
+        <div id="import-json-columns" hidden>
+          <label class="modal-label">Campos a importar</label>
+          <div id="import-json-columns-list" class="import-columns-list"></div>
+        </div>
         <div id="import-json-error" class="modal-error" hidden></div>
       </div>
       <div class="modal-actions">
