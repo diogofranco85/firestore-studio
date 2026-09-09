@@ -60,7 +60,7 @@ function buildCollectionNode(path, label) {
 
   const expandBtn = document.createElement('button');
   expandBtn.className = 'expand-btn';
-  expandBtn.textContent = '+';
+  expandBtn.textContent = '▸';
 
   const nameSpan = document.createElement('span');
   nameSpan.className = 'tree-label';
@@ -92,7 +92,7 @@ function buildCollectionNode(path, label) {
       }
     }
     childList.hidden = !childList.hidden;
-    expandBtn.textContent = childList.hidden ? '+' : '-';
+    expandBtn.textContent = childList.hidden ? '▸' : '▾';
   });
 
   return li;
@@ -107,7 +107,7 @@ function buildDocumentNode(docPath, label) {
 
   const expandBtn = document.createElement('button');
   expandBtn.className = 'expand-btn';
-  expandBtn.textContent = '+';
+  expandBtn.textContent = '▸';
 
   const nameSpan = document.createElement('span');
   nameSpan.className = 'tree-label doc-label';
@@ -138,7 +138,7 @@ function buildDocumentNode(docPath, label) {
       }
     }
     childList.hidden = !childList.hidden;
-    expandBtn.textContent = childList.hidden ? '+' : '-';
+    expandBtn.textContent = childList.hidden ? '▸' : '▾';
   });
 
   return li;
