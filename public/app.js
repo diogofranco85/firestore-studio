@@ -202,6 +202,79 @@ async function submitCreateCollection() {
   }
 }
 
+function parseImportJson(text) {
+  let parsed;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    throw new Error('JSON inválido.');
+  }
+  const docs = [];
+  if (Array.isArray(parsed)) {
+    parsed.forEach((item) => {
+      if (!item || typeof item !== 'object') throw new Error('Cada item do array deve ser um objeto.');
+      const { id, ...data } = item;
+      docs.push({ id: id || undefined, data });
+    });
+  } else if (parsed && typeof parsed === 'object') {
+    Object.entries(parsed).forEach(([key, value]) => {
+      if (!value || typeof value !== 'object') throw new Error(`Valor de "${key}" deve ser um objeto.`);
+      const { id, ...data } = value;
+      docs.push({ id: id || key, data });
+    });
+  } else {
+    throw new Error('JSON deve ser um array ou um objeto.');
+  }
+  if (docs.length === 0) throw new Error('Nenhum documento encontrado no JSON.');
+  return docs;
+}
+
+let importJsonConnId = null;
+let importJsonPath = null;
+
+function openImportJsonModal(connId, path) {
+  importJsonConnId = connId;
+  importJsonPath = path;
+  document.getElementById('import-json-text').value = '';
+  document.getElementById('import-json-error').hidden = true;
+  document.getElementById('import-json-modal').hidden = false;
+  document.getElementById('import-json-text').focus();
+}
+
+function closeImportJsonModal() {
+  document.getElementById('import-json-modal').hidden = true;
+}
+
+async function submitImportJson() {
+  const text = document.getElementById('import-json-text').value.trim();
+  const errEl = document.getElementById('import-json-error');
+  errEl.hidden = true;
+  if (!text) {
+    errEl.textContent = 'Cole o JSON a importar.';
+    errEl.hidden = false;
+    return;
+  }
+  let documents;
+  try {
+    documents = parseImportJson(text);
+  } catch (err) {
+    errEl.textContent = err.message;
+    errEl.hidden = false;
+    return;
+  }
+  try {
+    const { imported, errors } = await api.send('POST', `/api/connections/${importJsonConnId}/import/${encodeURIComponentPath(importJsonPath)}`, { documents });
+    closeImportJsonModal();
+    await refreshTab(importJsonConnId, importJsonPath);
+    showBanner(errors && errors.length
+      ? `Importados ${imported} documento(s). ${errors.length} erro(s): ${errors[0]}`
+      : `Importados ${imported} documento(s).`);
+  } catch (err) {
+    errEl.textContent = `Erro ao importar: ${err.message}`;
+    errEl.hidden = false;
+  }
+}
+
 let editingConnectionId = null;
 
 function updateConnectionModalFields() {
@@ -337,6 +410,7 @@ function renderActiveTab() {
   document.getElementById('empty-state').hidden = !!tab;
   document.getElementById('table-panel').hidden = !tab;
   document.getElementById('add-doc-btn').disabled = !tab;
+  document.getElementById('import-json-btn').disabled = !tab;
   if (!tab) return;
 
   renderQueryPanel(tab);
@@ -626,12 +700,22 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
+  document.getElementById('import-json-close-btn').addEventListener('click', closeImportJsonModal);
+  document.getElementById('import-json-cancel-btn').addEventListener('click', closeImportJsonModal);
+  document.getElementById('import-json-confirm-btn').addEventListener('click', submitImportJson);
+  document.getElementById('import-json-modal').addEventListener('click', (event) => {
+    if (event.target.id === 'import-json-modal') closeImportJsonModal();
+  });
+
   document.addEventListener('keydown', (event) => {
     if (event.key === 'Escape' && !document.getElementById('connection-modal').hidden) {
       closeConnectionModal();
     }
     if (event.key === 'Escape' && !document.getElementById('create-collection-modal').hidden) {
       closeCreateCollectionModal();
+    }
+    if (event.key === 'Escape' && !document.getElementById('import-json-modal').hidden) {
+      closeImportJsonModal();
     }
   });
 });
@@ -895,4 +979,9 @@ document.getElementById('delete-doc-btn').addEventListener('click', async () => 
 document.getElementById('add-doc-btn').addEventListener('click', () => {
   const tab = getActiveTab();
   if (tab) openEditorForNew(tab.connId, tab.path);
+});
+
+document.getElementById('import-json-btn').addEventListener('click', () => {
+  const tab = getActiveTab();
+  if (tab) openImportJsonModal(tab.connId, tab.path);
 });

@@ -142,6 +142,28 @@ data.post('/document/*', async (req, res) => {
   }
 });
 
+data.post('/import/*', async (req, res) => {
+  try {
+    const { documents } = req.body;
+    if (!Array.isArray(documents) || documents.length === 0) {
+      return res.status(400).json({ error: 'Missing documents array' });
+    }
+    let imported = 0;
+    const errors = [];
+    for (const doc of documents) {
+      try {
+        await svc.createDocument(req.db, req.params[0], { id: doc.id, data: doc.data || {} });
+        imported += 1;
+      } catch (err) {
+        errors.push(`${doc.id || '(auto)'}: ${err.message}`);
+      }
+    }
+    res.status(201).json({ imported, errors });
+  } catch (err) {
+    handleError(err, res);
+  }
+});
+
 data.put('/document/*', async (req, res) => {
   try {
     const { data: docData } = req.body;

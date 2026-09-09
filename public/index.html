@@ -21,7 +21,10 @@
       <div id="table-panel" hidden>
         <div id="query-bar">
           <button id="query-toggle-btn">▸ Query</button>
-          <button id="add-doc-btn" disabled>+ Novo documento</button>
+          <div>
+            <button id="add-doc-btn" disabled>+ Novo documento</button>
+            <button id="import-json-btn" disabled>Importar JSON</button>
+          </div>
         </div>
         <div id="query-panel" hidden>
           <div id="query-wheres"></div>
@@ -120,6 +123,26 @@
       <div class="modal-actions">
         <button id="create-collection-cancel-btn" class="modal-btn-secondary">Cancelar</button>
         <button id="create-collection-confirm-btn" class="modal-btn-primary">Criar</button>
+      </div>
+    </div>
+  </div>
+  <div id="import-json-modal" class="modal-overlay" hidden>
+    <div class="modal">
+      <div class="modal-header">
+        <span class="modal-title">Importar JSON</span>
+        <button id="import-json-close-btn" class="modal-close-btn">×</button>
+      </div>
+      <div class="modal-body">
+        <label class="modal-label" for="import-json-text">
+          Array de objetos <code>[{...}]</code> ou mapa <code>{"id": {...}}</code>. Um campo
+          <code>id</code> dentro do objeto tem prioridade sobre a chave do mapa; sem nenhum dos dois, o ID é gerado automaticamente.
+        </label>
+        <textarea id="import-json-text" class="modal-input json-input" placeholder='[{"id": "abc", "nome": "..."}]'></textarea>
+        <div id="import-json-error" class="modal-error" hidden></div>
+      </div>
+      <div class="modal-actions">
+        <button id="import-json-cancel-btn" class="modal-btn-secondary">Cancelar</button>
+        <button id="import-json-confirm-btn" class="modal-btn-primary">Importar</button>
       </div>
     </div>
   </div>
