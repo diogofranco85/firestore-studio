@@ -36,8 +36,32 @@ body {
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--text-faint);
+  margin: 0;
+}
+
+#sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   margin: 0 0 8px 4px;
 }
+
+#add-collection-btn {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: var(--radius);
+  background: var(--accent);
+  color: #fff;
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+}
+#add-collection-btn:hover { background: var(--accent-hover); }
 
 #collection-tree, .tree-children { list-style: none; margin: 0; padding-left: 16px; }
 #collection-tree { padding-left: 0; }

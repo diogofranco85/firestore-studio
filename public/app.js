@@ -144,6 +144,31 @@ function buildDocumentNode(docPath, label) {
   return li;
 }
 
+async function createCollection() {
+  const name = window.prompt('Nome da nova coleção:');
+  if (!name) return;
+  if (name.includes('/')) {
+    showBanner('Nome de coleção não pode conter "/".');
+    return;
+  }
+
+  const docId = window.prompt(
+    'ID do primeiro documento (deixe em branco para gerar automaticamente):'
+  );
+
+  try {
+    await api.send('POST', `/api/document/${encodeURIComponentPath(name)}`, {
+      id: docId || undefined,
+      data: {},
+    });
+    document.getElementById('collection-tree').appendChild(buildCollectionNode(name, name));
+    hideBanner();
+  } catch (err) {
+    showBanner(`Erro ao criar coleção: ${err.message}`);
+  }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   loadRootCollections();
+  document.getElementById('add-collection-btn').addEventListener('click', createCollection);
 });
