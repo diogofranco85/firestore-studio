@@ -2,6 +2,10 @@ const config = require('./config');
 const app = require('./app');
 const { db } = require('./firestoreClient');
 
+const date = new Date();
+
+console.log(`Inicializando Firestore studio...`)
+console.log(date.toISOString())
 async function start() {
   try {
     await db.listCollections();
