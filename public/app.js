@@ -197,6 +197,93 @@ async function submitCreateCollection() {
   }
 }
 
+async function selectCollection(path, cursorDocId) {
+  if (path !== state.currentPath) {
+    state.cursorStack = [];
+    cursorDocId = undefined;
+  }
+  try {
+    const query = cursorDocId
+      ? `?pageSize=${state.pageSize}&cursor=${encodeURIComponent(cursorDocId)}`
+      : `?pageSize=${state.pageSize}`;
+    const { documents } = await api.get(`/api/documents/${encodeURIComponentPath(path)}${query}`);
+    state.currentPath = path;
+    state.documents = documents;
+    document.getElementById('current-path').textContent = path;
+    document.getElementById('add-doc-btn').disabled = false;
+    renderTable(documents);
+    document.getElementById('prev-page-btn').disabled = state.cursorStack.length === 0;
+    document.getElementById('next-page-btn').disabled = documents.length < state.pageSize;
+    hideBanner();
+
+    const previouslySelected = document.querySelector('#collection-tree .tree-row.selected');
+    if (previouslySelected) previouslySelected.classList.remove('selected');
+    const selectedRow = document.querySelector(
+      `#collection-tree > li[data-path="${CSS.escape(path)}"] > .tree-row`
+    );
+    if (selectedRow) selectedRow.classList.add('selected');
+  } catch (err) {
+    showBanner(`Erro ao carregar ${path}: ${err.message}`);
+  }
+}
+
+function renderTable(documents) {
+  const thead = document.querySelector('#doc-table thead');
+  const tbody = document.querySelector('#doc-table tbody');
+  thead.innerHTML = '';
+  tbody.innerHTML = '';
+
+  const fieldNames = new Set();
+  documents.forEach((doc) => Object.keys(doc.data || {}).forEach((key) => fieldNames.add(key)));
+  const columns = ['id', ...fieldNames];
+
+  const headRow = document.createElement('tr');
+  columns.forEach((col) => {
+    const th = document.createElement('th');
+    th.textContent = col;
+    headRow.appendChild(th);
+  });
+  thead.appendChild(headRow);
+
+  documents.forEach((doc) => {
+    const row = document.createElement('tr');
+    row.addEventListener('click', () => openEditorForExisting(state.currentPath, doc.id));
+    columns.forEach((col) => {
+      const td = document.createElement('td');
+      td.textContent = col === 'id' ? doc.id : previewValue(doc.data[col]);
+      row.appendChild(td);
+    });
+    tbody.appendChild(row);
+  });
+}
+
+function previewValue(value) {
+  if (value === undefined) return '';
+  if (value === null) return 'null';
+  if (typeof value === 'object' && value.__type) {
+    if (value.__type === 'timestamp') return value.value;
+    if (value.__type === 'geopoint') return `(${value.lat}, ${value.lng})`;
+    if (value.__type === 'reference') return value.path;
+    if (value.__type === 'bytes') return '<bytes>';
+  }
+  if (Array.isArray(value)) return `[${value.length} itens]`;
+  if (typeof value === 'object') return '{...}';
+  return String(value);
+}
+
+document.getElementById('next-page-btn').addEventListener('click', () => {
+  const lastDoc = state.documents[state.documents.length - 1];
+  if (!lastDoc) return;
+  state.cursorStack.push(lastDoc.id);
+  selectCollection(state.currentPath, lastDoc.id);
+});
+
+document.getElementById('prev-page-btn').addEventListener('click', () => {
+  state.cursorStack.pop();
+  const prevCursor = state.cursorStack[state.cursorStack.length - 1];
+  selectCollection(state.currentPath, prevCursor);
+});
+
 document.addEventListener('DOMContentLoaded', () => {
   loadRootCollections();
 
