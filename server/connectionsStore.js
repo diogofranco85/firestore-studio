@@ -54,9 +54,12 @@ function updateConnection(id, fields) {
   const current = getConnection(id);
   if (!current) return null;
   const merged = { ...current, ...fields };
+  // Uma conexão que deixa de ser de produção não deve reter a credencial
+  // antiga em repouso no banco.
+  const credentialJson = merged.type === 'emulator' ? null : merged.credentialJson || null;
   db.prepare(
     'UPDATE connections SET name = ?, type = ?, project_id = ?, emulator_host = ?, credential_json = ? WHERE id = ?'
-  ).run(merged.name, merged.type, merged.projectId, merged.emulatorHost || null, merged.credentialJson || null, id);
+  ).run(merged.name, merged.type, merged.projectId, merged.emulatorHost || null, credentialJson, id);
   return getConnection(id);
 }
 

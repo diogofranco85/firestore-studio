@@ -78,11 +78,15 @@ function buildConnectionNode(conn) {
   deleteBtn.addEventListener('click', async (e) => {
     e.stopPropagation();
     if (!confirm(`Excluir a conexão "${conn.name}"?`)) return;
-    await api.send('DELETE', `/api/connections/${conn.id}`);
-    state.tabs = state.tabs.filter((t) => t.connId !== conn.id);
-    renderTabBar();
-    renderActiveTab();
-    loadConnections();
+    try {
+      await api.send('DELETE', `/api/connections/${conn.id}`);
+      state.tabs = state.tabs.filter((t) => t.connId !== conn.id);
+      renderTabBar();
+      renderActiveTab();
+      loadConnections();
+    } catch (err) {
+      showBanner(`Erro ao excluir conexão: ${err.message}`);
+    }
   });
 
   row.appendChild(expandBtn);

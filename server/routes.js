@@ -21,17 +21,23 @@ router.get('/connections', (req, res) => {
   res.json({ connections: store.listConnections() });
 });
 
-router.post('/connections', (req, res) => {
-  const { name, type, projectId, emulatorHost, credentialJson } = req.body;
+function validateConnectionInput({ name, type, projectId, emulatorHost, credentialJson }) {
   if (!name || !type || !projectId) {
-    return res.status(400).json({ error: 'name, type e projectId são obrigatórios' });
+    return 'name, type e projectId são obrigatórios';
   }
   if (type === 'emulator' && !emulatorHost) {
-    return res.status(400).json({ error: 'emulatorHost é obrigatório para conexões de emulador' });
+    return 'emulatorHost é obrigatório para conexões de emulador';
   }
   if (type === 'production' && !credentialJson) {
-    return res.status(400).json({ error: 'credentialJson é obrigatório para conexões de produção' });
+    return 'credentialJson é obrigatório para conexões de produção';
   }
+  return null;
+}
+
+router.post('/connections', (req, res) => {
+  const { name, type, projectId, emulatorHost, credentialJson } = req.body;
+  const error = validateConnectionInput(req.body);
+  if (error) return res.status(400).json({ error });
   const created = store.createConnection({ name, type, projectId, emulatorHost, credentialJson });
   const { credentialJson: _omit, ...safe } = created;
   res.status(201).json(safe);
@@ -39,8 +45,12 @@ router.post('/connections', (req, res) => {
 
 router.put('/connections/:id', async (req, res) => {
   try {
+    const current = store.getConnection(req.params.id);
+    if (!current) return res.status(404).json({ error: 'Conexão não encontrada' });
+    const merged = { ...current, ...req.body };
+    const error = validateConnectionInput(merged);
+    if (error) return res.status(400).json({ error });
     const updated = store.updateConnection(req.params.id, req.body);
-    if (!updated) return res.status(404).json({ error: 'Conexão não encontrada' });
     await resetClient(req.params.id);
     const { credentialJson: _omit, ...safe } = updated;
     res.json(safe);

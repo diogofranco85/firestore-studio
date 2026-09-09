@@ -1,6 +1,11 @@
 const admin = require('firebase-admin');
 const { getConnection } = require('./connectionsStore');
 
+// Cada conexão define seu próprio host via settings({host}) — a env var
+// global do SDK tem precedência sobre isso e sequestraria todas as
+// conexões para o mesmo endereço, então ela é removida aqui.
+delete process.env.FIRESTORE_EMULATOR_HOST;
+
 const clients = new Map();
 
 async function getClient(connectionId) {
