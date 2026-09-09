@@ -177,10 +177,6 @@
         <textarea id="import-json-text" class="modal-input json-input" placeholder='[{"id": "abc", "nome": "..."}]'></textarea>
         <label class="modal-label" for="import-json-file">Ou selecione um arquivo .json</label>
         <input id="import-json-file" type="file" accept="application/json,.json" class="modal-input" />
-        <label class="import-column-item" for="import-json-mongo">
-          <input id="import-json-mongo" type="checkbox" />
-          Dados exportados do MongoDB (converte <code>$date</code>, <code>$oid</code> e <code>$number*</code> para os tipos do Firebase)
-        </label>
         <div id="import-json-columns" hidden>
           <label class="modal-label">Campos a importar</label>
           <div id="import-json-columns-list" class="import-columns-list"></div>
