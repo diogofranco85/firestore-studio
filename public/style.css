@@ -1,0 +1,36 @@
+* { box-sizing: border-box; }
+body { margin: 0; font-family: system-ui, sans-serif; color: #1a1a1a; background: #fafafa; }
+#app { display: flex; height: 100vh; }
+
+#sidebar { width: 260px; overflow-y: auto; border-right: 1px solid #ddd; padding: 12px; background: #fff; }
+#sidebar h2 { font-size: 14px; text-transform: uppercase; color: #666; margin: 0 0 8px; }
+#collection-tree, .tree-children { list-style: none; margin: 0; padding-left: 14px; }
+#collection-tree { padding-left: 0; }
+.tree-row { display: flex; align-items: center; gap: 4px; padding: 2px 0; }
+.expand-btn { width: 18px; height: 18px; border: 1px solid #ccc; background: #fff; cursor: pointer; font-size: 11px; line-height: 1; }
+.tree-label { cursor: pointer; }
+.tree-label:hover { text-decoration: underline; }
+.doc-label { color: #555; font-size: 13px; }
+
+#content { flex: 1; display: flex; flex-direction: column; padding: 16px; overflow: hidden; }
+.banner { background: #fdecea; color: #9c1c0c; border: 1px solid #f5c2bb; padding: 8px 12px; margin-bottom: 12px; border-radius: 4px; }
+
+#table-panel { flex: 1; display: flex; flex-direction: column; overflow: auto; }
+#table-toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+#doc-table { border-collapse: collapse; width: 100%; }
+#doc-table th, #doc-table td { border: 1px solid #ddd; padding: 6px 10px; text-align: left; font-size: 13px; white-space: nowrap; }
+#doc-table tbody tr { cursor: pointer; }
+#doc-table tbody tr:hover { background: #f0f4ff; }
+#pagination { margin-top: 8px; display: flex; gap: 8px; }
+
+#editor-panel { position: fixed; right: 0; top: 0; bottom: 0; width: 420px; background: #fff; border-left: 1px solid #ddd; padding: 16px; overflow-y: auto; box-shadow: -2px 0 8px rgba(0,0,0,0.08); }
+#editor-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+.field-row { display: flex; gap: 6px; align-items: center; margin-bottom: 6px; }
+.field-key { width: 120px; }
+.field-type { width: 100px; }
+.field-value { flex: 1; display: flex; gap: 4px; }
+.value-input { flex: 1; }
+.json-input { width: 100%; min-height: 80px; font-family: monospace; }
+#editor-actions { display: flex; gap: 8px; margin-top: 12px; }
+#delete-doc-btn { background: #d93025; color: #fff; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; }
+#save-doc-btn { background: #1a73e8; color: #fff; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; }

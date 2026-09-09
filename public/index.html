@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8" />
+  <title>Firestore Studio</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="app">
+    <aside id="sidebar">
+      <h2>Collections</h2>
+      <ul id="collection-tree"></ul>
+    </aside>
+    <main id="content">
+      <div id="banner" class="banner" hidden></div>
+      <div id="table-panel">
+        <div id="table-toolbar">
+          <span id="current-path"></span>
+          <button id="add-doc-btn" disabled>+ Novo documento</button>
+        </div>
+        <table id="doc-table"><thead></thead><tbody></tbody></table>
+        <div id="pagination">
+          <button id="prev-page-btn" disabled>Anterior</button>
+          <button id="next-page-btn" disabled>Próxima</button>
+        </div>
+      </div>
+      <div id="editor-panel" hidden>
+        <div id="editor-header">
+          <span id="editor-title"></span>
+          <button id="editor-close-btn">×</button>
+        </div>
+        <div id="editor-fields"></div>
+        <div id="editor-actions">
+          <button id="save-doc-btn">Salvar</button>
+          <button id="delete-doc-btn">Apagar</button>
+        </div>
+      </div>
+    </main>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>
