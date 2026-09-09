@@ -309,7 +309,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 });
 
-const TYPE_OPTIONS = ['string', 'number', 'boolean', 'null', 'timestamp', 'geopoint', 'reference', 'map/array'];
+const TYPE_OPTIONS = ['string', 'number', 'boolean', 'null', 'timestamp', 'geopoint', 'reference', 'bytes', 'map/array'];
 
 function openEditor(title, docId, collectionPath, data) {
   state.editingDoc = { collectionPath, id: docId, isNew: docId === null };
@@ -416,6 +416,7 @@ function defaultValueForType(type) {
     case 'timestamp': return { __type: 'timestamp', value: new Date().toISOString() };
     case 'geopoint': return { __type: 'geopoint', lat: 0, lng: 0 };
     case 'reference': return { __type: 'reference', path: '' };
+    case 'bytes': return { __type: 'bytes', base64: '' };
     case 'map/array': return {};
     default: return '';
   }
@@ -449,8 +450,9 @@ function renderValueInput(container, type, value) {
     const input = document.createElement('input');
     input.type = 'datetime-local';
     input.className = 'value-input';
-    const iso = value && value.value ? value.value : new Date().toISOString();
-    input.value = iso.slice(0, 16);
+    const date = value && value.value ? new Date(value.value) : new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    input.value = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
     container.appendChild(input);
   } else if (type === 'geopoint') {
     const lat = document.createElement('input');
@@ -471,6 +473,13 @@ function renderValueInput(container, type, value) {
     input.className = 'value-input';
     input.placeholder = 'ex: users/abc123';
     input.value = value && value.path ? value.path : '';
+    container.appendChild(input);
+  } else if (type === 'bytes') {
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'value-input';
+    input.placeholder = 'base64';
+    input.value = value && value.base64 ? value.base64 : '';
     container.appendChild(input);
   } else {
     const textarea = document.createElement('textarea');
@@ -498,6 +507,9 @@ function readFieldRow(row) {
   }
   if (type === 'reference') {
     return { __type: 'reference', path: container.querySelector('input').value };
+  }
+  if (type === 'bytes') {
+    return { __type: 'bytes', base64: container.querySelector('input').value };
   }
   return JSON.parse(container.querySelector('textarea').value);
 }
