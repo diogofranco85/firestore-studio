@@ -18,6 +18,14 @@ async function listDocuments(collectionPath, { pageSize = 50, cursorDocId } = {}
   return snapshot.docs.map((doc) => ({ id: doc.id, data: toWire(doc.data()) }));
 }
 
+async function queryDocuments(collectionPath, { wheres = [], orderBy, limit = 50 } = {}) {
+  let query = wheres.reduce((q, { field, op, value }) => q.where(field, op, value), db.collection(collectionPath));
+  if (orderBy && orderBy.field) query = query.orderBy(orderBy.field, orderBy.dir === 'desc' ? 'desc' : 'asc');
+  query = query.limit(limit);
+  const snapshot = await query.get();
+  return snapshot.docs.map((doc) => ({ id: doc.id, data: toWire(doc.data()) }));
+}
+
 async function getDocument(docPath) {
   const snap = await db.doc(docPath).get();
   if (!snap.exists) return null;
@@ -49,6 +57,7 @@ async function deleteDocument(docPath) {
 module.exports = {
   listCollections,
   listDocuments,
+  queryDocuments,
   getDocument,
   createDocument,
   updateDocument,

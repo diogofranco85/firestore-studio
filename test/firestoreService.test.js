@@ -62,6 +62,24 @@ test('createDocument auto-generates an id when none is given', async () => {
   await svc.deleteDocument(`${testCollection}/${id}`);
 });
 
+test('queryDocuments filters, orders and limits', async () => {
+  await svc.createDocument(testCollection, { id: 'q1', data: { color: 'red', n: 3 } });
+  await svc.createDocument(testCollection, { id: 'q2', data: { color: 'blue', n: 1 } });
+  await svc.createDocument(testCollection, { id: 'q3', data: { color: 'red', n: 2 } });
+
+  const filtered = await svc.queryDocuments(testCollection, {
+    wheres: [{ field: 'color', op: '==', value: 'red' }],
+    orderBy: { field: 'n', dir: 'asc' },
+  });
+  assert.deepStrictEqual(filtered.map((d) => d.id), ['q3', 'q1']);
+
+  const limited = await svc.queryDocuments(testCollection, {
+    wheres: [{ field: 'color', op: '==', value: 'red' }],
+    limit: 1,
+  });
+  assert.strictEqual(limited.length, 1);
+});
+
 test('listDocuments paginates with cursorDocId', async () => {
   await svc.createDocument(testCollection, { id: 'p1', data: { n: 1 } });
   await svc.createDocument(testCollection, { id: 'p2', data: { n: 2 } });

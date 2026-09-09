@@ -1,8 +1,6 @@
 const state = {
-  currentPath: null,
-  documents: [],
-  pageSize: 50,
-  cursorStack: [],
+  tabs: [],
+  activeTabId: null,
   editingDoc: null,
 };
 
@@ -66,7 +64,7 @@ function buildCollectionNode(path, label) {
   const nameSpan = document.createElement('span');
   nameSpan.className = 'tree-label';
   nameSpan.textContent = label;
-  nameSpan.addEventListener('click', () => selectCollection(path));
+  nameSpan.addEventListener('click', () => openTab(path));
 
   row.appendChild(expandBtn);
   row.appendChild(nameSpan);
@@ -197,37 +195,263 @@ async function submitCreateCollection() {
   }
 }
 
-async function selectCollection(path, cursorDocId) {
-  if (path !== state.currentPath) {
-    state.cursorStack = [];
-    cursorDocId = undefined;
-  }
-  try {
-    const query = cursorDocId
-      ? `?pageSize=${state.pageSize}&cursor=${encodeURIComponent(cursorDocId)}`
-      : `?pageSize=${state.pageSize}`;
-    const { documents } = await api.get(`/api/documents/${encodeURIComponentPath(path)}${query}`);
-    state.currentPath = path;
-    state.documents = documents;
-    document.getElementById('current-path').textContent = path;
-    document.getElementById('add-doc-btn').disabled = false;
-    renderTable(documents);
-    document.getElementById('prev-page-btn').disabled = state.cursorStack.length === 0;
-    document.getElementById('next-page-btn').disabled = documents.length < state.pageSize;
-    hideBanner();
+// ---- Tabs ----
 
-    const previouslySelected = document.querySelector('#collection-tree .tree-row.selected');
-    if (previouslySelected) previouslySelected.classList.remove('selected');
+function getActiveTab() {
+  return state.tabs.find((t) => t.id === state.activeTabId) || null;
+}
+
+function getTabByPath(path) {
+  return state.tabs.find((t) => t.path === path) || null;
+}
+
+function openTab(path) {
+  let tab = getTabByPath(path);
+  if (!tab) {
+    tab = {
+      id: `${path}::${Date.now()}`,
+      path,
+      wheres: [],
+      orderByField: '',
+      orderByDir: 'asc',
+      limit: 50,
+      queryApplied: false,
+      viewMode: 'table',
+      documents: [],
+      cursorStack: [],
+    };
+    state.tabs.push(tab);
+  }
+  setActiveTab(tab.id);
+  fetchTabDocuments(tab);
+}
+
+function closeTab(id) {
+  const idx = state.tabs.findIndex((t) => t.id === id);
+  if (idx === -1) return;
+  state.tabs.splice(idx, 1);
+  if (state.activeTabId === id) {
+    const next = state.tabs[idx] || state.tabs[idx - 1];
+    state.activeTabId = next ? next.id : null;
+  }
+  renderTabBar();
+  renderActiveTab();
+}
+
+function setActiveTab(id) {
+  state.activeTabId = id;
+  renderTabBar();
+  renderActiveTab();
+
+  const previouslySelected = document.querySelector('#collection-tree .tree-row.selected');
+  if (previouslySelected) previouslySelected.classList.remove('selected');
+  const tab = getActiveTab();
+  if (tab) {
     const selectedRow = document.querySelector(
-      `#collection-tree li[data-path="${CSS.escape(path)}"] > .tree-row`
+      `#collection-tree li[data-path="${CSS.escape(tab.path)}"] > .tree-row`
     );
     if (selectedRow) selectedRow.classList.add('selected');
-  } catch (err) {
-    showBanner(`Erro ao carregar ${path}: ${err.message}`);
   }
 }
 
-function renderTable(documents) {
+function renderTabBar() {
+  const bar = document.getElementById('tab-bar');
+  bar.innerHTML = '';
+  state.tabs.forEach((tab) => {
+    const el = document.createElement('div');
+    el.className = 'tab' + (tab.id === state.activeTabId ? ' active' : '');
+    const label = document.createElement('span');
+    label.className = 'tab-label';
+    label.textContent = tab.path;
+    label.title = tab.path;
+    label.addEventListener('click', () => setActiveTab(tab.id));
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'tab-close';
+    closeBtn.textContent = '×';
+    closeBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      closeTab(tab.id);
+    });
+    el.appendChild(label);
+    el.appendChild(closeBtn);
+    bar.appendChild(el);
+  });
+}
+
+function renderActiveTab() {
+  const tab = getActiveTab();
+  document.getElementById('empty-state').hidden = !!tab;
+  document.getElementById('table-panel').hidden = !tab;
+  document.getElementById('add-doc-btn').disabled = !tab;
+  if (!tab) return;
+
+  renderQueryPanel(tab);
+  renderViewModeBar(tab);
+  renderActiveView(tab);
+  document.getElementById('prev-page-btn').disabled = tab.queryApplied || tab.cursorStack.length === 0;
+  document.getElementById('next-page-btn').disabled = tab.queryApplied || tab.documents.length < tab.limit;
+}
+
+async function fetchTabDocuments(tab, cursorDocId) {
+  try {
+    let documents;
+    if (tab.queryApplied) {
+      const body = {
+        wheres: tab.wheres,
+        limit: tab.limit,
+        orderBy: tab.orderByField ? { field: tab.orderByField, dir: tab.orderByDir } : undefined,
+      };
+      ({ documents } = await api.send('POST', `/api/query/${encodeURIComponentPath(tab.path)}`, body));
+    } else {
+      const query = cursorDocId
+        ? `?pageSize=${tab.limit}&cursor=${encodeURIComponent(cursorDocId)}`
+        : `?pageSize=${tab.limit}`;
+      ({ documents } = await api.get(`/api/documents/${encodeURIComponentPath(tab.path)}${query}`));
+    }
+    tab.documents = documents;
+    hideBanner();
+  } catch (err) {
+    showBanner(`Erro ao carregar ${tab.path}: ${err.message}`);
+  }
+  if (tab.id === state.activeTabId) renderActiveTab();
+}
+
+async function refreshTab(path) {
+  const tab = getTabByPath(path);
+  if (tab) await fetchTabDocuments(tab);
+}
+
+document.getElementById('next-page-btn').addEventListener('click', () => {
+  const tab = getActiveTab();
+  if (!tab) return;
+  const lastDoc = tab.documents[tab.documents.length - 1];
+  if (!lastDoc) return;
+  tab.cursorStack.push(lastDoc.id);
+  fetchTabDocuments(tab, lastDoc.id);
+});
+
+document.getElementById('prev-page-btn').addEventListener('click', () => {
+  const tab = getActiveTab();
+  if (!tab) return;
+  tab.cursorStack.pop();
+  const prevCursor = tab.cursorStack[tab.cursorStack.length - 1];
+  fetchTabDocuments(tab, prevCursor);
+});
+
+// ---- Query builder (Simple mode) ----
+
+const WHERE_OPS = ['==', '!=', '<', '<=', '>', '>=', 'array-contains', 'array-contains-any', 'in', 'not-in'];
+
+function parseWhereValue(raw) {
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return raw;
+  }
+}
+
+function renderQueryPanel(tab) {
+  const wheresEl = document.getElementById('query-wheres');
+  wheresEl.innerHTML = '';
+  tab.wheres.forEach((w, i) => wheresEl.appendChild(buildWhereRow(tab, w, i)));
+  document.getElementById('query-orderby-field').value = tab.orderByField;
+  document.getElementById('query-orderby-dir').value = tab.orderByDir;
+  document.getElementById('query-limit').value = tab.limit;
+}
+
+function buildWhereRow(tab, where, index) {
+  const row = document.createElement('div');
+  row.className = 'where-row';
+
+  const fieldInput = document.createElement('input');
+  fieldInput.placeholder = 'campo';
+  fieldInput.value = where.field;
+  fieldInput.addEventListener('input', () => { where.field = fieldInput.value; });
+
+  const opSelect = document.createElement('select');
+  WHERE_OPS.forEach((op) => {
+    const opt = document.createElement('option');
+    opt.value = op;
+    opt.textContent = op;
+    if (op === where.op) opt.selected = true;
+    opSelect.appendChild(opt);
+  });
+  opSelect.addEventListener('change', () => { where.op = opSelect.value; });
+
+  const valueInput = document.createElement('input');
+  valueInput.placeholder = 'valor';
+  valueInput.value = where.rawValue;
+  valueInput.addEventListener('input', () => { where.rawValue = valueInput.value; });
+
+  const removeBtn = document.createElement('button');
+  removeBtn.textContent = '×';
+  removeBtn.addEventListener('click', () => {
+    tab.wheres.splice(index, 1);
+    renderQueryPanel(tab);
+  });
+
+  row.appendChild(fieldInput);
+  row.appendChild(opSelect);
+  row.appendChild(valueInput);
+  row.appendChild(removeBtn);
+  return row;
+}
+
+document.getElementById('query-toggle-btn').addEventListener('click', () => {
+  const panel = document.getElementById('query-panel');
+  panel.hidden = !panel.hidden;
+  document.getElementById('query-toggle-btn').textContent = (panel.hidden ? '▸' : '▾') + ' Query';
+});
+
+document.getElementById('add-where-btn').addEventListener('click', () => {
+  const tab = getActiveTab();
+  if (!tab) return;
+  tab.wheres.push({ field: '', op: '==', rawValue: '' });
+  renderQueryPanel(tab);
+});
+
+document.getElementById('run-query-btn').addEventListener('click', () => {
+  const tab = getActiveTab();
+  if (!tab) return;
+  tab.wheres = tab.wheres
+    .filter((w) => w.field.trim())
+    .map((w) => ({ field: w.field.trim(), op: w.op, value: parseWhereValue(w.rawValue), rawValue: w.rawValue }));
+  tab.orderByField = document.getElementById('query-orderby-field').value.trim();
+  tab.orderByDir = document.getElementById('query-orderby-dir').value;
+  tab.limit = parseInt(document.getElementById('query-limit').value, 10) || 50;
+  tab.queryApplied = tab.wheres.length > 0 || !!tab.orderByField;
+  tab.cursorStack = [];
+  fetchTabDocuments(tab);
+});
+
+// ---- View modes ----
+
+function renderViewModeBar(tab) {
+  document.querySelectorAll('.view-mode-btn').forEach((btn) => {
+    btn.classList.toggle('active', btn.dataset.mode === tab.viewMode);
+  });
+}
+
+document.querySelectorAll('.view-mode-btn').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    const tab = getActiveTab();
+    if (!tab) return;
+    tab.viewMode = btn.dataset.mode;
+    renderActiveTab();
+  });
+});
+
+function renderActiveView(tab) {
+  document.getElementById('view-table').hidden = tab.viewMode !== 'table';
+  document.getElementById('view-json').hidden = tab.viewMode !== 'json';
+  document.getElementById('view-tree').hidden = tab.viewMode !== 'tree';
+  if (tab.viewMode === 'table') renderTable(tab);
+  else if (tab.viewMode === 'json') renderJson(tab);
+  else renderTree(tab);
+}
+
+function renderTable(tab) {
+  const documents = tab.documents;
   const thead = document.querySelector('#doc-table thead');
   const tbody = document.querySelector('#doc-table tbody');
   thead.innerHTML = '';
@@ -247,7 +471,7 @@ function renderTable(documents) {
 
   documents.forEach((doc) => {
     const row = document.createElement('tr');
-    row.addEventListener('click', () => openEditorForExisting(state.currentPath, doc.id));
+    row.addEventListener('click', () => openEditorForExisting(tab.path, doc.id));
     columns.forEach((col) => {
       const td = document.createElement('td');
       td.textContent = col === 'id' ? doc.id : previewValue(doc.data[col]);
@@ -255,6 +479,59 @@ function renderTable(documents) {
     });
     tbody.appendChild(row);
   });
+}
+
+function renderJson(tab) {
+  document.getElementById('view-json').textContent = JSON.stringify(tab.documents, null, 2);
+}
+
+function renderTree(tab) {
+  const root = document.getElementById('view-tree');
+  root.innerHTML = '';
+  tab.documents.forEach((doc) => {
+    root.appendChild(buildTreeNode(doc.id, doc.data, () => openEditorForExisting(tab.path, doc.id)));
+  });
+}
+
+function buildTreeNode(label, value, onLabelClick) {
+  const li = document.createElement('li');
+  li.className = 'tree-node';
+
+  const children = valueChildren(value);
+  const row = document.createElement('div');
+  row.className = 'tree-row';
+
+  const expandBtn = document.createElement('button');
+  expandBtn.className = 'expand-btn';
+  expandBtn.textContent = children ? '▸' : ' ';
+
+  const labelSpan = document.createElement('span');
+  labelSpan.className = 'tree-label';
+  labelSpan.textContent = children ? label : `${label}: ${previewValue(value)}`;
+  if (onLabelClick) labelSpan.addEventListener('click', onLabelClick);
+
+  row.appendChild(expandBtn);
+  row.appendChild(labelSpan);
+  li.appendChild(row);
+
+  if (children) {
+    const childList = document.createElement('ul');
+    childList.className = 'tree-children';
+    childList.hidden = true;
+    Object.entries(children).forEach(([key, val]) => childList.appendChild(buildTreeNode(key, val)));
+    li.appendChild(childList);
+    expandBtn.addEventListener('click', () => {
+      childList.hidden = !childList.hidden;
+      expandBtn.textContent = childList.hidden ? '▸' : '▾';
+    });
+  }
+
+  return li;
+}
+
+function valueChildren(value) {
+  if (value && typeof value === 'object' && !value.__type) return value;
+  return null;
 }
 
 function previewValue(value) {
@@ -270,19 +547,6 @@ function previewValue(value) {
   if (typeof value === 'object') return '{...}';
   return String(value);
 }
-
-document.getElementById('next-page-btn').addEventListener('click', () => {
-  const lastDoc = state.documents[state.documents.length - 1];
-  if (!lastDoc) return;
-  state.cursorStack.push(lastDoc.id);
-  selectCollection(state.currentPath, lastDoc.id);
-});
-
-document.getElementById('prev-page-btn').addEventListener('click', () => {
-  state.cursorStack.pop();
-  const prevCursor = state.cursorStack[state.cursorStack.length - 1];
-  selectCollection(state.currentPath, prevCursor);
-});
 
 document.addEventListener('DOMContentLoaded', () => {
   loadRootCollections();
@@ -546,7 +810,7 @@ document.getElementById('save-doc-btn').addEventListener('click', async () => {
     }
     document.getElementById('editor-panel').hidden = true;
     state.editingDoc = null;
-    await selectCollection(collectionPath);
+    await refreshTab(collectionPath);
   } catch (err) {
     showBanner(`Erro ao salvar: ${err.message}`);
   }
@@ -559,12 +823,13 @@ document.getElementById('delete-doc-btn').addEventListener('click', async () => 
     await api.send('DELETE', `/api/document/${encodeURIComponentPath(`${collectionPath}/${id}`)}`);
     document.getElementById('editor-panel').hidden = true;
     state.editingDoc = null;
-    await selectCollection(collectionPath);
+    await refreshTab(collectionPath);
   } catch (err) {
     showBanner(`Erro ao apagar: ${err.message}`);
   }
 });
 
 document.getElementById('add-doc-btn').addEventListener('click', () => {
-  if (state.currentPath) openEditorForNew(state.currentPath);
+  const tab = getActiveTab();
+  if (tab) openEditorForNew(tab.path);
 });

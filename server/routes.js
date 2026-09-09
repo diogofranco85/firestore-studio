@@ -37,6 +37,16 @@ router.get('/documents/*', async (req, res) => {
   }
 });
 
+router.post('/query/*', async (req, res) => {
+  try {
+    const { wheres, orderBy, limit } = req.body;
+    const documents = await svc.queryDocuments(req.params[0], { wheres, orderBy, limit });
+    res.json({ documents });
+  } catch (err) {
+    handleError(err, res);
+  }
+});
+
 router.get('/document/*', async (req, res) => {
   try {
     const document = await svc.getDocument(req.params[0]);
