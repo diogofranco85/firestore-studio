@@ -54,6 +54,7 @@ async function loadRootCollections() {
 function buildCollectionNode(path, label) {
   const li = document.createElement('li');
   li.className = 'tree-node';
+  li.dataset.path = path;
 
   const row = document.createElement('div');
   row.className = 'tree-row';
@@ -184,7 +185,11 @@ async function submitCreateCollection() {
       id: docId || undefined,
       data: {},
     });
-    document.getElementById('collection-tree').appendChild(buildCollectionNode(name, name));
+    const tree = document.getElementById('collection-tree');
+    const existing = tree.querySelector(`:scope > li[data-path="${CSS.escape(name)}"]`);
+    if (!existing) {
+      tree.appendChild(buildCollectionNode(name, name));
+    }
     hideBanner();
     closeCreateCollectionModal();
   } catch (err) {

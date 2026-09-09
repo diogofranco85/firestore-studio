@@ -60,7 +60,7 @@ body {
   cursor: pointer;
   padding: 5px 8px;
   white-space: nowrap;
-  width: 100px
+  width: 100px;
 }
 #add-collection-btn:hover { background: var(--accent-hover); }
 
