@@ -104,6 +104,25 @@
       </div>
     </div>
   </div>
+  <div id="create-collection-modal" class="modal-overlay" hidden>
+    <div class="modal">
+      <div class="modal-header">
+        <span class="modal-title">Nova coleção</span>
+        <button id="create-collection-close-btn" class="modal-close-btn">×</button>
+      </div>
+      <div class="modal-body">
+        <label class="modal-label" for="new-collection-name">Nome da coleção</label>
+        <input id="new-collection-name" class="modal-input" type="text" placeholder="ex: users" />
+        <label class="modal-label" for="new-collection-doc-id">ID do primeiro documento (opcional)</label>
+        <input id="new-collection-doc-id" class="modal-input" type="text" placeholder="gerado automaticamente se vazio" />
+        <div id="create-collection-error" class="modal-error" hidden></div>
+      </div>
+      <div class="modal-actions">
+        <button id="create-collection-cancel-btn" class="modal-btn-secondary">Cancelar</button>
+        <button id="create-collection-confirm-btn" class="modal-btn-primary">Criar</button>
+      </div>
+    </div>
+  </div>
   <script src="app.js"></script>
 </body>
 </html>

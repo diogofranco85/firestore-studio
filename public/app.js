@@ -89,8 +89,14 @@ function buildConnectionNode(conn) {
     }
   });
 
+  const addCollBtn = document.createElement('button');
+  addCollBtn.className = 'expand-btn';
+  addCollBtn.textContent = '+';
+  addCollBtn.title = 'Nova coleção';
+
   row.appendChild(expandBtn);
   row.appendChild(nameSpan);
+  row.appendChild(addCollBtn);
   row.appendChild(editBtn);
   row.appendChild(deleteBtn);
   li.appendChild(row);
@@ -101,27 +107,34 @@ function buildConnectionNode(conn) {
   li.appendChild(childList);
 
   let loaded = false;
+
+  function renderCollectionLi(name) {
+    const collLi = document.createElement('li');
+    collLi.className = 'tree-node';
+    collLi.dataset.connId = conn.id;
+    collLi.dataset.path = name;
+    const collRow = document.createElement('div');
+    collRow.className = 'tree-row';
+    const collLabel = document.createElement('span');
+    collLabel.className = 'tree-label';
+    collLabel.textContent = name;
+    collLabel.addEventListener('click', () => openTab(conn.id, name));
+    collRow.appendChild(collLabel);
+    collLi.appendChild(collRow);
+    return collLi;
+  }
+
+  async function loadCollections() {
+    const { collections } = await api.get(`/api/connections/${conn.id}/collections`);
+    childList.innerHTML = '';
+    collections.forEach((name) => childList.appendChild(renderCollectionLi(name)));
+    loaded = true;
+  }
+
   const toggle = async () => {
     if (!loaded) {
       try {
-        const { collections } = await api.get(`/api/connections/${conn.id}/collections`);
-        childList.innerHTML = '';
-        collections.forEach((name) => {
-          const collLi = document.createElement('li');
-          collLi.className = 'tree-node';
-          collLi.dataset.connId = conn.id;
-          collLi.dataset.path = name;
-          const collRow = document.createElement('div');
-          collRow.className = 'tree-row';
-          const collLabel = document.createElement('span');
-          collLabel.className = 'tree-label';
-          collLabel.textContent = name;
-          collLabel.addEventListener('click', () => openTab(conn.id, name));
-          collRow.appendChild(collLabel);
-          collLi.appendChild(collRow);
-          childList.appendChild(collLi);
-        });
-        loaded = true;
+        await loadCollections();
       } catch (err) {
         showBanner(`Erro ao carregar coleções de ${conn.name}: ${err.message}`);
         return;
@@ -133,7 +146,60 @@ function buildConnectionNode(conn) {
   expandBtn.addEventListener('click', toggle);
   nameSpan.addEventListener('click', toggle);
 
+  addCollBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    openCreateCollectionModal(conn.id, async () => {
+      await loadCollections();
+      childList.hidden = false;
+      expandBtn.textContent = '▾';
+    });
+  });
+
   return li;
+}
+
+let createCollectionConnId = null;
+let createCollectionOnSuccess = null;
+
+function openCreateCollectionModal(connId, onSuccess) {
+  createCollectionConnId = connId;
+  createCollectionOnSuccess = onSuccess;
+  document.getElementById('new-collection-name').value = '';
+  document.getElementById('new-collection-doc-id').value = '';
+  document.getElementById('create-collection-error').hidden = true;
+  document.getElementById('create-collection-modal').hidden = false;
+  document.getElementById('new-collection-name').focus();
+}
+
+function closeCreateCollectionModal() {
+  document.getElementById('create-collection-modal').hidden = true;
+}
+
+async function submitCreateCollection() {
+  const name = document.getElementById('new-collection-name').value.trim();
+  const docId = document.getElementById('new-collection-doc-id').value.trim();
+  const errEl = document.getElementById('create-collection-error');
+  if (!name) {
+    errEl.textContent = 'Informe o nome da coleção.';
+    errEl.hidden = false;
+    return;
+  }
+  if (name.includes('/')) {
+    errEl.textContent = 'Nome de coleção não pode conter "/".';
+    errEl.hidden = false;
+    return;
+  }
+  try {
+    await api.send('POST', `/api/connections/${createCollectionConnId}/document/${encodeURIComponentPath(name)}`, {
+      id: docId || undefined,
+      data: {},
+    });
+    closeCreateCollectionModal();
+    if (createCollectionOnSuccess) await createCollectionOnSuccess();
+  } catch (err) {
+    errEl.textContent = `Erro ao criar coleção: ${err.message}`;
+    errEl.hidden = false;
+  }
 }
 
 let editingConnectionId = null;
@@ -548,9 +614,24 @@ document.addEventListener('DOMContentLoaded', () => {
     if (event.target.id === 'connection-modal') closeConnectionModal();
   });
 
+  document.getElementById('create-collection-close-btn').addEventListener('click', closeCreateCollectionModal);
+  document.getElementById('create-collection-cancel-btn').addEventListener('click', closeCreateCollectionModal);
+  document.getElementById('create-collection-confirm-btn').addEventListener('click', submitCreateCollection);
+  document.getElementById('create-collection-modal').addEventListener('click', (event) => {
+    if (event.target.id === 'create-collection-modal') closeCreateCollectionModal();
+  });
+  ['new-collection-name', 'new-collection-doc-id'].forEach((id) => {
+    document.getElementById(id).addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') submitCreateCollection();
+    });
+  });
+
   document.addEventListener('keydown', (event) => {
     if (event.key === 'Escape' && !document.getElementById('connection-modal').hidden) {
       closeConnectionModal();
+    }
+    if (event.key === 'Escape' && !document.getElementById('create-collection-modal').hidden) {
+      closeCreateCollectionModal();
     }
   });
 });
