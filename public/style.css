@@ -537,6 +537,22 @@ body {
   outline: none;
   border-color: var(--accent);
 }
+.import-columns-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  max-height: 160px;
+  overflow-y: auto;
+  padding: 8px 0;
+}
+.import-column-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text);
+  white-space: nowrap;
+}
 .modal-error {
   color: var(--danger);
   font-size: 12px;

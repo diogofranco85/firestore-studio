@@ -236,7 +236,10 @@ function openImportJsonModal(connId, path) {
   importJsonConnId = connId;
   importJsonPath = path;
   document.getElementById('import-json-text').value = '';
+  document.getElementById('import-json-file').value = '';
   document.getElementById('import-json-error').hidden = true;
+  document.getElementById('import-json-columns').hidden = true;
+  document.getElementById('import-json-columns-list').innerHTML = '';
   document.getElementById('import-json-modal').hidden = false;
   document.getElementById('import-json-text').focus();
 }
@@ -245,12 +248,52 @@ function closeImportJsonModal() {
   document.getElementById('import-json-modal').hidden = true;
 }
 
+function previewImportColumns(text) {
+  const columnsWrap = document.getElementById('import-json-columns');
+  const listEl = document.getElementById('import-json-columns-list');
+  listEl.innerHTML = '';
+  let documents;
+  try {
+    documents = parseImportJson(text);
+  } catch {
+    columnsWrap.hidden = true;
+    return;
+  }
+  const fields = [...new Set(documents.flatMap((doc) => Object.keys(doc.data)))].sort();
+  if (fields.length === 0) {
+    columnsWrap.hidden = true;
+    return;
+  }
+  fields.forEach((field) => {
+    const label = document.createElement('label');
+    label.className = 'import-column-item';
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.value = field;
+    checkbox.checked = true;
+    label.appendChild(checkbox);
+    label.appendChild(document.createTextNode(` ${field}`));
+    listEl.appendChild(label);
+  });
+  columnsWrap.hidden = false;
+}
+
+function loadImportJsonFile(file) {
+  const reader = new FileReader();
+  reader.onload = () => {
+    document.getElementById('import-json-text').value = reader.result;
+    document.getElementById('import-json-error').hidden = true;
+    previewImportColumns(reader.result);
+  };
+  reader.readAsText(file);
+}
+
 async function submitImportJson() {
   const text = document.getElementById('import-json-text').value.trim();
   const errEl = document.getElementById('import-json-error');
   errEl.hidden = true;
   if (!text) {
-    errEl.textContent = 'Cole o JSON a importar.';
+    errEl.textContent = 'Cole o JSON a importar ou selecione um arquivo.';
     errEl.hidden = false;
     return;
   }
@@ -261,6 +304,19 @@ async function submitImportJson() {
     errEl.textContent = err.message;
     errEl.hidden = false;
     return;
+  }
+  const columnsWrap = document.getElementById('import-json-columns');
+  if (!columnsWrap.hidden) {
+    const selected = [...document.querySelectorAll('#import-json-columns-list input:checked')].map((cb) => cb.value);
+    if (selected.length === 0) {
+      errEl.textContent = 'Selecione ao menos um campo para importar.';
+      errEl.hidden = false;
+      return;
+    }
+    documents = documents.map((doc) => ({
+      id: doc.id,
+      data: Object.fromEntries(Object.entries(doc.data).filter(([key]) => selected.includes(key))),
+    }));
   }
   try {
     const { imported, errors } = await api.send('POST', `/api/connections/${importJsonConnId}/import/${encodeURIComponentPath(importJsonPath)}`, { documents });
@@ -705,6 +761,13 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('import-json-confirm-btn').addEventListener('click', submitImportJson);
   document.getElementById('import-json-modal').addEventListener('click', (event) => {
     if (event.target.id === 'import-json-modal') closeImportJsonModal();
+  });
+  document.getElementById('import-json-text').addEventListener('input', (event) => {
+    previewImportColumns(event.target.value);
+  });
+  document.getElementById('import-json-file').addEventListener('change', (event) => {
+    const file = event.target.files[0];
+    if (file) loadImportJsonFile(file);
   });
 
   document.addEventListener('keydown', (event) => {
