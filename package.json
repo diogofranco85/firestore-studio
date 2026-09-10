@@ -30,6 +30,7 @@
     "firebase-admin": "^12.6.0"
   },
   "devDependencies": {
+    "firebase-tools": "^15.30.0",
     "nodemon": "^3.1.14"
   }
 }

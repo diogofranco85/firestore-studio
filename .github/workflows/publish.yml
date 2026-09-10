@@ -15,7 +15,22 @@ jobs:
           node-version: 22
           registry-url: https://registry.npmjs.org
 
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
       - run: npm ci
+
+      - name: Start Firestore emulator
+        run: |
+          npx firebase-tools emulators:start --only firestore --project demo-project > /tmp/emulator.log 2>&1 &
+          for i in $(seq 1 60); do
+            (echo > /dev/tcp/127.0.0.1/4588) >/dev/null 2>&1 && exit 0
+            sleep 1
+          done
+          echo "Emulador não subiu a tempo:"; cat /tmp/emulator.log; exit 1
+
       - run: npm test
 
       - name: Publish if version changed
