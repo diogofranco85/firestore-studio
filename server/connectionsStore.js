@@ -1,9 +1,10 @@
 const { DatabaseSync } = require('node:sqlite');
 const { randomUUID } = require('node:crypto');
 const fs = require('node:fs');
+const os = require('node:os');
 const path = require('node:path');
 
-const dbPath = process.env.CONNECTIONS_DB_PATH || path.join(__dirname, '..', '.data', 'connections.db');
+const dbPath = process.env.CONNECTIONS_DB_PATH || path.join(os.homedir(), '.firestore-studio', 'connections.db');
 fs.mkdirSync(path.dirname(dbPath), { recursive: true });
 
 const db = new DatabaseSync(dbPath);
