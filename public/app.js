@@ -4,6 +4,12 @@ const state = {
   editingDoc: null,
 };
 
+const ICONS = {
+  plus: '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M8 3v10M3 8h10"/></svg>',
+  edit: '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M11 2.5l2.5 2.5L5 13.5H2.5V11z"/></svg>',
+  trash: '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4.5h10M6.5 4.5V3h3v1.5M4.5 4.5l.6 8.5h5.8l.6-8.5"/></svg>',
+};
+
 let pendingRequests = 0;
 function showLoading() {
   pendingRequests += 1;
@@ -81,19 +87,23 @@ function buildConnectionNode(conn) {
   expandBtn.className = 'expand-btn';
   expandBtn.textContent = '▸';
 
+  const connTypeDot = document.createElement('span');
+  connTypeDot.className = `conn-type-dot conn-type-${conn.type}`;
+  connTypeDot.title = conn.type === 'production' ? 'Produção' : 'Emulador';
+
   const nameSpan = document.createElement('span');
   nameSpan.className = 'tree-label';
   nameSpan.textContent = conn.name;
 
   const editBtn = document.createElement('button');
-  editBtn.className = 'expand-btn';
-  editBtn.textContent = '✎';
+  editBtn.className = 'icon-btn';
+  editBtn.innerHTML = ICONS.edit;
   editBtn.title = 'Editar conexão';
   editBtn.addEventListener('click', (e) => { e.stopPropagation(); openConnectionModal(conn); });
 
   const deleteBtn = document.createElement('button');
-  deleteBtn.className = 'expand-btn';
-  deleteBtn.textContent = '×';
+  deleteBtn.className = 'icon-btn icon-btn-danger';
+  deleteBtn.innerHTML = ICONS.trash;
   deleteBtn.title = 'Excluir conexão';
   deleteBtn.addEventListener('click', async (e) => {
     e.stopPropagation();
@@ -110,15 +120,20 @@ function buildConnectionNode(conn) {
   });
 
   const addCollBtn = document.createElement('button');
-  addCollBtn.className = 'expand-btn';
-  addCollBtn.textContent = '+';
+  addCollBtn.className = 'icon-btn';
+  addCollBtn.innerHTML = ICONS.plus;
   addCollBtn.title = 'Nova coleção';
 
+  const actions = document.createElement('div');
+  actions.className = 'row-actions';
+  actions.appendChild(addCollBtn);
+  actions.appendChild(editBtn);
+  actions.appendChild(deleteBtn);
+
   row.appendChild(expandBtn);
+  row.appendChild(connTypeDot);
   row.appendChild(nameSpan);
-  row.appendChild(addCollBtn);
-  row.appendChild(editBtn);
-  row.appendChild(deleteBtn);
+  row.appendChild(actions);
   li.appendChild(row);
 
   const childList = document.createElement('ul');
