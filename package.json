@@ -1,5 +1,5 @@
 {
-  "name": "firestore-studio",
+  "name": "@diogofranco85/firestore-studio",
   "version": "0.1.0",
   "private": true,
   "description": "Local data browser/editor for the Firestore emulator",
