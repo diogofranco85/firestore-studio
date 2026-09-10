@@ -4,6 +4,14 @@
   "private": true,
   "description": "Local data browser/editor for the Firestore emulator",
   "main": "server/start.js",
+  "bin": {
+    "firestore-studio": "bin/firestore-studio.js"
+  },
+  "files": [
+    "server",
+    "public",
+    "bin"
+  ],
   "scripts": {
     "start": "node server/start.js",
     "dev": "nodemon --signal SIGHUP server/start.js",
