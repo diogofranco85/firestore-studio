@@ -1,7 +1,6 @@
 {
-  "name": "firestore-studio",
+  "name": "@diogofranco85/firestore-studio",
   "version": "0.1.0",
-  "private": true,
   "description": "Local data browser/editor for the Firestore emulator",
   "main": "server/start.js",
   "bin": {
@@ -12,6 +11,13 @@
     "public",
     "bin"
   ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/diogofranco85/firestore-studio.git"
+  },
   "scripts": {
     "start": "node server/start.js",
     "dev": "nodemon --signal SIGHUP server/start.js",

@@ -32,6 +32,12 @@ O servidor sobe em `http://localhost:4001` (configurável, veja abaixo).
 ### Instalação global (comando `firestore-studio`)
 
 ```bash
+npm install -g @diogofranco85/firestore-studio
+```
+
+Ou, a partir do repositório local:
+
+```bash
 npm install -g .
 # ou, para manter sincronizado com o repositório via symlink:
 npm link
@@ -70,6 +76,10 @@ Todas as rotas ficam sob `/api`:
 - `GET /connections/:connId/document/*` / `POST` / `PUT` / `DELETE`
 - `POST /connections/:connId/import/*` (importação em lote)
 - `GET /connections/:connId/indexes/*` / `POST` / `DELETE` (índices compostos, apenas conexões de produção)
+
+## Publicação (CI)
+
+O workflow `.github/workflows/publish.yml` roda os testes e publica o pacote no npm a cada push/merge na branch `master`, pulando a publicação se a versão em `package.json` já tiver sido publicada. Para funcionar, cadastre um token de automação do npm (`npm token create`) como secret `NPM_TOKEN` do repositório no GitHub. Para publicar uma nova versão, basta incrementar `version` em `package.json` antes de mergear.
 
 ## Testes
 
