@@ -281,6 +281,19 @@ body {
 #add-doc-btn:hover:not(:disabled) { background: var(--accent-hover); }
 #add-doc-btn:disabled { background: var(--text-faint); cursor: not-allowed; }
 
+#indexes-btn {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  padding: 7px 14px;
+  border-radius: var(--radius);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+#indexes-btn:hover:not(:disabled) { background: var(--accent-hover); }
+#indexes-btn:disabled { background: var(--text-faint); cursor: not-allowed; }
+
 #import-json-btn {
   background: var(--accent);
   color: #fff;
