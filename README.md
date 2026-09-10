@@ -83,9 +83,13 @@ O workflow `.github/workflows/publish.yml` roda os testes e publica o pacote no 
 
 ## Testes
 
+Alguns testes fazem chamadas reais a um emulador do Firestore em `localhost:4588` — suba um antes de rodar a suíte (ex.: `npx firebase-tools emulators:start --only firestore --project demo-project`).
+
 ```bash
 npm test
 ```
+
+O pipeline de CI (`.github/workflows/publish.yml`) já sobe esse emulador automaticamente antes dos testes.
 
 Roda a suíte com `node --test` (sem framework externo).
 
