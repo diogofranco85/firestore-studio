@@ -3,7 +3,7 @@ const path = require('node:path');
 const routes = require('./routes');
 
 const app = express();
-app.use(express.json());
+app.use(express.json({limit: '1gb'}));
 app.use('/api', routes);
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
